@@ -1,0 +1,1 @@
+gcc -Og -ggdb3 -o ra1sdl3 plat-sdl3.c anm.c fle.c vid.c fob.c sou.c anm_globals.c msc.c sys.c ra1.c txt.c game.c res.c ctl.c -lSDL3
