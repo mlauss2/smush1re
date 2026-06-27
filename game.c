@@ -87,6 +87,7 @@ static char game_level_passwords[15][20] = { "FALCON", "BIGGS", "ACKBAR", "ANOAT
 					     "BESPIN", "BRIGIA", "DAGOBAH", "KESSEL",
 					     "GREEDO", "MIMBAN", "ORGANA" };
 
+
 uint8_t  game_difficulty_index;		/* 002ae972 */
 uint8_t  game_input_flipy;		/* 002ae974 */
 uint8_t  game_snddrv_volume;		/* 002ae977 */
@@ -96,7 +97,6 @@ uint8_t  DAT_002b5610;			/* 002b5610; GAM1 26 in pause called flag */
 uint8_t  DAT_002b5611;
 uint8_t  DAT_002b573e;
 uint8_t  game_curr_difficulty;
-uint16_t game_state_flags;
 
 struct anm_res game_anmres_laser2;	/* 002aed7f */
 struct anm_res game_anmres_banking;	/* 002af185 */
@@ -112,24 +112,25 @@ void *game_sound[10];			/* 002b019d - 002b01c4 */
 
 uint8_t game_level_pws_encrypted = 0;	/* 002b01c5 */
 int16_t game_levelfunc_retval;		/* 002b01c6 */
-static const char game_hiscore_names_allowedchars[] = "^`_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";  /* 002b01c8 */
+static const char game_levelpw_allowed_chars[33] = { "^`_ABCDEFGHIJKLMNOPQRSTUVWXYZ^'_\0" };	/* 002b01c8 */
 int16_t  game_lvlres_need_change;	/* 002b01e9 */
 char *game_lvlres_laser2file;		/* 002b01eb */
 char *game_lvlres_bankingfile;		/* 002b01ef */
 char *game_lvlres_explodingfile;	/* 002b01f3 */
 char *game_lvlres_bangfile;		/* 002b01f7 */
 char *game_lvlres_laserfile;		/* 002b01fb */
-uint8_t game_newanm_posted;		/* 002b01ff */
-uint8_t game_anmpos_updated;		/* 002b0200 */
-char *game_lvlres_sndfile;		/* 002b0201 */
-int16_t game_explosion_xpos[10];	/* 002b0205 */
-int16_t game_explosion_ypos[10];	/* 002b0219 */
-int16_t game_explosion_skipidx[10];	/* 002b022d */
-int16_t game_explosion_frmeidx[10];	/* 002b0241 */
+uint8_t  game_newanm_posted;		/* 002b01ff */
+uint8_t  game_anmpos_updated;		/* 002b0200 */
+char     *game_lvlres_sndfile;		/* 002b0201 */
+int16_t  game_explosion_xpos[10];	/* 002b0205 */
+int16_t  game_explosion_ypos[10];	/* 002b0219 */
+int16_t  game_explosion_skipidx[10];	/* 002b022d */
+int16_t  game_explosion_frmeidx[10];	/* 002b0241 */
 uint16_t game_explosion_currcnt;	/* 002b0255 */
-
 uint8_t  DAT_002b089e;			/* 002b089e */
 uint8_t  DAT_002b089f;			/* 002b089f */
+
+uint8_t  game_demo_mode;		/* 002b2612 */
 
 char *	 game_newanm_filename;		/* 002b51b4 */
 int16_t	 game_newanm_splice1;		/* 002b51b8 */
@@ -168,7 +169,7 @@ uint16_t game_player_targets_hit;	/* 002b55e0 */
 
 uint16_t DAT_002b55e6;			/* 002b55e6 */
 
-uint16_t game_state_flags;		/* 002b560e */
+uint8_t  game_state_flags[2];		/* 002b560e */
 uint8_t  DAT_002b5610;			/* 002b5610 */
 uint8_t  DAT_002b5611;			/* 002b5611 */
 uint8_t  game_hide_table[300];		/* 002b5612 */
@@ -410,7 +411,8 @@ void game_main(int16_t debug)
 	res_resource_load("SYS/ALERT.SAD",    &game_sound_ALERT);
 	res_resource_load("SYS/BONUS.SAD",    &game_sound_BONUS);
 	res_resource_load("SYS/BLAST.SAD",    &game_sound_BLAST);
-	game_state_flags = 0;
+	game_state_flags[0] = 0;
+	game_state_flags[1] = 0;	/* both are written to with a single 16bit store */
 	game_set_next_level(NULL);
 	game_run("OPEN/O1CALIB.ANM", 1, game_anm_frme_render_postcb, game_anm_loop_cb,
 		 game_anm_game_cb, game_hide_table, 0, 150000);
@@ -449,19 +451,19 @@ void game_switch_task(void)
 {
 	int ret;
 
-	if ((tolower(game_input_curr_key) == 'j') && (0 == game_state_flags & 0x0120)) {
+	if ((tolower(game_input_curr_key) == 'j') && (0 == game_state_flags[0] & 0x20) && (0 == game_state_flags[1] & 1)) {
 		game_input_curr_key = 0;
 		game_options_joystick_screen();
 	}
-	if ((tolower(game_input_curr_key) == 'w') && (0 == game_state_flags & 0x0120)) {
+	if ((tolower(game_input_curr_key) == 'w') && (0 == game_state_flags[0] & 0x20) && (0 == game_state_flags[1] & 1)) {
 		game_input_curr_key = 0;
 		game_options_quit_screen();
 	}
-	if ((tolower(game_input_curr_key) == '0') && (0 == game_state_flags & 0x0120)) {
+	if ((tolower(game_input_curr_key) == '0') && (0 == game_state_flags[0] & 0x20) && (0 == game_state_flags[1] & 1)) {
 		game_input_curr_key = 0;
-		game_options_config_screen();
+		game_options_config_screen(1, (game_player_score == 0));
 	}
-	if ((tolower(game_input_curr_key) == ' ') && (0 == game_state_flags & 0x0120)) {
+	if ((tolower(game_input_curr_key) == ' ') && (0 == game_state_flags[0] & 0x20) && (0 == game_state_flags[1] & 1)) {
 		game_input_curr_key = 0;
 		game_pause();
 	}
@@ -475,7 +477,7 @@ void game_switch_task(void)
 void game_reset_lvldata(uint16_t diffidx)
 {
 	game_difficulty_level_index = diffidx;
-	game_state_flags = game_rebltune[game_difficulty_index][diffidx].flags;
+	*(uint16_t *)&game_state_flags[0] = game_rebltune[game_difficulty_index][diffidx].flags; /* single 16bit move */
 	game_player_targets_hit = 0;
 //	game_gam93_hidetl_last_cleartested_bit = 0;
 	game_level_status_flags = 0;
@@ -490,9 +492,317 @@ void game_reset_lvldata(uint16_t diffidx)
 	game_target_lastcnt = 0;
 }
 
-void game_options_joystick_screen(void)
+int16_t game_enter_passcode_screen(void)
 {
 
+}
+
+void game_options_joystick_screen(void)
+{
+	struct anm_rect viewport;
+	int16_t state;
+
+	/* returns 0 if the joystick is disabled (and mouse ENabled) */
+	if (ctl_joy_calibrate_start() == 0) {
+		return;
+	}
+
+	state = 0;
+	viewport.x = 4;
+	viewport.y = 4;
+	viewport.w = 312;
+	viewport.h = 192;
+
+	if (game_input_curr_key == 0 || game_input_curr_key == 0x1B) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	game_state_flags[1] |= 1;
+	sou_pause();
+	anm_cmd_pause(1);
+	game_switch_task();
+	game_switch_task();
+
+	vid_bitmap_clear(game_postcb_dst);
+	vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+	vid_palette_set(game_pal_copy);
+
+	game_joycfg_minmax[0] = -50;
+	game_joycfg_minmax[1] = -50;
+	game_joycfg_minmax[2] = 50;
+	game_joycfg_minmax[3] = 50;
+
+	while ((state < 4) && (game_exit_loop_now_flag == 0)) {
+		vid_bitmap_clear(game_postcb_dst);
+		txt_font_print(NULL, &viewport, 160, 10, 0x280, 100, "JOYSTICK CALIBRATION");
+		char *instruction;
+		switch (state) {
+			case 0:
+			case 3:
+				instruction = "<Center joystick";
+				break;
+			case 1:
+				instruction = "<Move joystick to upper left";
+				break;
+			case 2:
+				instruction = "<Move joystick to lower right";
+				break;
+		}
+
+		txt_font_print(NULL, &viewport, 160, 25, 0x280, 100, instruction);
+		txt_font_print(NULL, &viewport, 160, 40, 0x280, 100, "<and press fire.");
+
+		if (state != 0) {
+			int16_t disp_x = (game_input_curr_x / 4) + 160;
+			int16_t disp_y = (game_input_curr_y / 4);
+			txt_font_printf(NULL, &viewport, 160, 175, 0x280, 100, "(%d,%d)", disp_x, disp_y);
+		}
+
+		if (game_input_prev_button1 == 0 && game_input_curr_button1 != 0) {
+			if (state == 0) {
+				ctl_joy_center();
+			}
+			state++;
+		}
+
+		if (state != 0) {
+			if (game_input_curr_x > game_joycfg_minmax[2]) {
+				game_joycfg_minmax[2] = game_input_curr_x;
+			}
+			if (game_input_curr_x < game_joycfg_minmax[0]) {
+				game_joycfg_minmax[0] = game_input_curr_x;
+			}
+			if (game_input_curr_y > game_joycfg_minmax[3]) {
+				game_joycfg_minmax[3] = game_input_curr_y;
+			}
+			if (game_input_curr_y < game_joycfg_minmax[1]) {
+				game_joycfg_minmax[1] = game_input_curr_y;
+			}
+		}
+		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+
+		AG(anm_anmflags_global) |= 0x8000;
+		game_switch_task();
+		AG(anm_anmflags_global) &= 0x7FFF;
+	}
+
+	ctl_joy_calibrate_end();
+
+	if (game_input_curr_key == 0 || game_input_curr_key == 27) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	vid_palette_set(AG(anm_anim_header_current).animpal);
+	anm_cmd_pause(0);
+	sou_resume();
+
+	game_state_flags[1] &= 0xfe;
+	game_input_curr_key = 0;
+}
+
+void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en)
+{
+	int16_t state = 1;
+	int16_t debounce = 0;
+	struct anm_rect viewport;
+
+	viewport.x = 4;
+	viewport.y = 4;
+	viewport.w = 312;
+	viewport.h = 192;
+
+	if (game_input_curr_key == 0 || game_input_curr_key == 0x1b) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	game_state_flags[1] |= 1;	/* inhibit GAME probably */
+	sou_pause();
+	anm_cmd_pause(1);
+	game_switch_task();
+	game_switch_task();
+
+	if (clrscr != 0) {
+		vid_bitmap_clear(game_postcb_dst);
+		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+		vid_palette_set(game_pal_copy);
+	}
+
+	while (state != 0) {
+		if (clrscr != 0) {
+			vid_bitmap_clear(game_postcb_dst);
+		}
+
+		txt_font_print(NULL, &viewport, 160, 30, 0x280, 100, "GAME OPTIONS");
+		txt_font_print(NULL, &viewport, 160, 45, 0x280, 100, "<EXIT MENU");
+
+		if (sou_engine_gethook(4) == 0) {
+			txt_font_print(NULL, &viewport, 160, 60, 0x280, 100, "<ROOKIE1 IS MALE");
+		} else {
+			txt_font_print(NULL, &viewport, 160, 60, 0x280, 100, "<ROOKIE1 IS FEMALE");
+		}
+
+		if (AG(sou_music_enabled) == 0) {
+			txt_font_print(NULL, &viewport, 160, 75, 0x280, 100, "<MUSIC IS OFF");
+		} else {
+			txt_font_print(NULL, &viewport, 160, 75, 0x280, 100, "<MUSIC IS ON");
+		}
+
+		if (AG(sou_sfx_enabled) == 0) {
+			txt_font_print(NULL, &viewport, 160, 90, 0x280, 100, "<SFX AND VOICE ARE OFF");
+		} else {
+			txt_font_print(NULL, &viewport, 160, 90, 0x280, 100, "<SFX AND VOICE ARE ON");
+		}
+
+		if (AG(anm_text_force_enable) == 0) {
+			txt_font_print(NULL, &viewport, 160, 105, 0x280, 100, "<DIALOGUE TEXT IS OFF");
+		} else {
+			txt_font_print(NULL, &viewport, 160, 105, 0x280, 100, "<DIALOGUE TEXT IS ON");
+		}
+
+		if (game_input_flipy == 0) {
+			txt_font_print(NULL, &viewport, 160, 120, 0x280, 100, "<CONTROLS ARE NORMAL");
+		} else {
+			txt_font_print(NULL, &viewport, 160, 120, 0x280, 100, "<CONTROLS ARE Y-FLIPPED");
+		}
+
+		txt_font_printf(NULL, &viewport, 160, 135, 0x280, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
+
+		if (diffchg_en != 0) {
+			if (game_difficulty_index == 0) {
+				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS EASY");
+			} else if (game_difficulty_index == 1) {
+				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS NORMAL");
+			} else {
+				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS HARD");
+			}
+		}
+
+		int dispatch_action = 0;
+		if (game_input_curr_button1 != 0 && game_input_prev_button1 == 0) {
+			dispatch_action = 1;
+		} else if (game_input_curr_key == '\n' || game_input_curr_key == '\r') {
+			dispatch_action = 1;
+		}
+
+		if (dispatch_action) {
+			game_input_curr_key = 0;
+			switch(state) {
+				case 1:
+					state = 0;
+					break;
+				case 2:
+					sou_engine_sethook(4, !sou_engine_gethook(4));
+					if ((game_state_flags[0] & 0x40) == 0) {
+						msc_memset(game_hide_table, 0, 150);
+					}
+					break;
+				case 3:
+					AG(sou_music_enabled) ^= 1;
+					break;
+				case 4:
+					AG(sou_sfx_enabled) ^= 1;
+					AG(sou_voice_enabled) ^= 1;
+					break;
+				case 5:
+					AG(anm_text_force_enable) ^= 1;
+					break;
+				case 6:
+					game_input_flipy ^= 1;
+					break;
+				case 7:
+					while (game_input_curr_button1 != 0 && game_exit_loop_now_flag == 0) {
+						if (game_input_curr_x > 80) {
+							game_snddrv_volume += 5;
+							if (game_snddrv_volume > 127) game_snddrv_volume = 127;
+						} else if (game_input_curr_x < -80) {
+							game_snddrv_volume -= 5;
+							if (game_snddrv_volume < 0) game_snddrv_volume = 0;
+						}
+
+						sou_drv_set_volume(game_snddrv_volume);
+						game_snddrv_volume = sou_drv_get_volume();
+
+						txt_font_printf(NULL, &viewport, 160, 135, 0x280, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
+
+						vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+						AG(anm_anmflags_global) |= 0x8000;
+
+						game_input_curr_key = 0;
+						game_switch_task();
+
+						if (clrscr != 0) {
+							vid_bitmap_clear(game_postcb_dst);
+						}
+					}
+					break;
+				case 8:
+					game_difficulty_index++;
+					if (game_difficulty_index > 2)
+						game_difficulty_index = 0;
+					break;
+			}
+		}
+
+		if (game_input_curr_y <= 80 && game_input_curr_y >= -80) {
+			debounce = 3;
+		} else {
+			debounce++;
+			if (debounce > 3) {
+				debounce = 0;
+				game_input_curr_key = (game_input_curr_y > 0) ? 0x82 : 0x81;
+				ctl_mouse_reset();
+			}
+		}
+
+		if (game_input_curr_key == 0x82) {
+			int16_t max_state = (diffchg_en != 0) ? 8 : 7;
+			state++;
+			if (state > max_state)
+				state = 1;
+		} else if (game_input_curr_key == 0x81) {
+			int16_t max_state = (diffchg_en != 0) ? 8 : 7;
+			state--;
+			if (state < 1)
+				state = max_state;
+		}
+
+		if (state != 0) {
+			msc_draw_rect(game_postcb_dst, 10, (state * 15) + 29, 300, 15, 223, 320, 199);
+		}
+
+		if (game_exit_loop_now_flag != 0 || game_input_curr_key == 'o' || game_input_curr_key == 'O') {
+			state = 0;
+		}
+
+		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+		AG(anm_anmflags_global) |= 0x8000;
+
+		game_input_curr_key = 0;
+		game_switch_task();
+	}
+
+	if (clrscr != 0) {
+		vid_bitmap_clear(game_postcb_dst);
+		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+	}
+
+	AG(anm_anmflags_global) &= 0x7FFF;
+
+	if (game_input_curr_key == 0 || game_input_curr_key == 0x1b) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	if (clrscr != 0) {
+		vid_palette_set(AG(anm_anim_header_current).animpal);
+	}
+
+	anm_cmd_pause(0);
+	sou_resume();
+	game_state_flags[1] &= 0xfe;
 }
 
 void game_load_level_resources(char *l2f, char *bf, char *ef, char *bangf, char *lf)
@@ -636,10 +946,10 @@ void game_anm_game_cb(uint8_t *dst, uint8_t *statusbar, struct anm_rect *viewpor
 		      uint32_t gam2, uint32_t gam3, uint32_t gam4,
 		      uint32_t gam5, uint32_t gam6, uint32_t gam7)
 {
-	if (game_state_flags & 0x0100)		/* GAME inhibited */
+	if (game_state_flags[1] & 0x01)		/* GAME inhibited */
 		return;
 
-	if ((game_state_flags & 0x0020) == 0) {	/* pause test */
+	if ((game_state_flags[0] & 0020) == 0) {	/* pause test */
 		/* TODO: dispatch.. */
 	} else {
 		if (gam1 < 11) {
@@ -756,7 +1066,7 @@ int16_t game_anm_frme_render_postcb (uint8_t *dst, uint8_t *statusbar,
 			sou_engine_stop(6);
 			sou_engine_stop(5);
 			sou_engine_stop(2);
-			if ((game_state_flags & 0x0100) == 0) {
+			if ((game_state_flags[1] & 0x01) == 0) {
 				anm_cmd_clearscreen();
 			}
 		}
@@ -880,7 +1190,7 @@ void game_screen_hiscore(void)
 
 void game_set_next_level(game_level_fn_t func)
 {
-	game_state_flags = (game_difficulty_index == 2) ? 2 : 0;
+	game_state_flags[0] = (game_difficulty_index == 2) ? 2 : 0;
 	game_curr_levelfunc = func ? func : game_scene_calib_and_init;
 
 	if (DAT_002b573e == 0) {
@@ -954,13 +1264,16 @@ int16_t game_scene_calib_and_init(void)
 
 int16_t game_level0_func(void)
 {
-	int state, yt, yc, yv;
+	int16_t game_state;                /* SI */
+	int16_t game_passcode_result = 0;  /* Stack[-0x18] local_18 */
+	int16_t game_mouse_delay = 0;      /* Stack[-0x1c] local_1c */
 
 	if ((game_input_curr_key == 0) || (game_input_curr_key == 0x1b)) {
 		game_exit_loop_now_flag = 0;
 		game_input_curr_key = 0;
 	}
-	state = 0;
+
+	game_state = 0;
 	sou_engine_stop_all();
 	game_load_level_resources(NULL, NULL, NULL, NULL, NULL);
 	game_cmd_newanim("OPEN/O1LOGO.ANM", 0x420, 0, 0, -1);
@@ -968,37 +1281,262 @@ int16_t game_level0_func(void)
 	game_screen_hiscore();
 	game_player_score = 0;
 
+	/* 1. Secret Joystick Calibration Check (Down, Up, Left, Right) */
 	do {
-		if ((game_input_curr_button1 != 0) && (game_input_prev_button1 != 0) && (state < 4)) {
-			if (state == 0) {
-				if (-51 < game_input_curr_y)
-					;
+		if ((game_input_curr_button1 != 0) && (game_input_prev_button1 == 0) && (game_state <= 3)) {
+			if (game_state == 0) {
+				if (game_input_curr_y < -50)
+					game_state++;
+			} else if (game_state == 1) {
+				if (game_input_curr_y > 50)
+					game_state++;
 				else
-					state = state + 1;
-			} else if (state == 1) {
-				yt = game_input_curr_y - 50;
-				yc = game_input_curr_y == 50;
-				yv = game_input_curr_y;
-			} else if (state == 2) {
+					game_state = 0;
+			} else if (game_state == 2) {
 				if (game_input_curr_x < -50)
-					state++;
+					game_state++;
 				else
-					state = 0;
-			} else if (state == 3) {
-				yt = game_input_curr_x - 50;
-				yc = yt == 0;
-				yv = game_input_curr_x;
+					game_state = 0;
+			} else if (game_state == 3) {
+				if (game_input_curr_x > 50)
+					game_state++;
+				else
+					game_state = 0;
 			}
-
 		}
-		if (state == 4) {
+
+		if (game_state == 4) {
 			sou_engine_sethook(5, 1);
-			DAT_002b573e = 1;		/* calibration done flag? */
-			state = 5;
+			DAT_002b573e = 1;
+			game_state = 5;
 		}
 		game_switch_task();
 
-	} while (1);
+	} while ((game_exit_loop_now_flag == 0) && (game_postcb_currfrme < game_postcb_maxfrme - 3));
+
+	if ((game_input_curr_key == 0) || (game_input_curr_key == 0x1b)) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	/* Wait for the user to release the button */
+	while (game_input_curr_button1 != 0) {
+		game_switch_task();
+	}
+
+	game_demo_mode = 1;
+
+	/* 2. Attract Mode / Demo Loop */
+	while (game_demo_mode != 0) {
+		if ((game_input_curr_button1 != 0) || (game_exit_loop_now_flag != 0) || (game_input_curr_key != 0)) {
+			break;
+		}
+
+		/* Play High Score sequence */
+		game_cmd_newanim("OPEN/O1SCORE.ANM", 0x420, 0, 0, -1);
+		do {
+			if ((game_input_curr_button1 != 0) || (game_exit_loop_now_flag != 0) || (game_input_curr_key != 0)) {
+				game_demo_mode = 0;
+				break;
+			}
+
+			if (game_postcb_currfrme > 20) {
+				txt_font_print(NULL, NULL, 0x37, 0x7, 0x80, 0x64, "TOP PILOTS");
+			}
+
+			game_state = 0;
+			while (game_state < 10) {
+				int16_t game_text_y = (game_postcb_currfrme * 2) - (game_state * 16) - 40; /* EAX */
+				int16_t game_text_x = (game_text_y * 14) + 25;                             /* EDI */
+
+				txt_font_print(NULL, NULL, 0xa, game_text_x, 0x80, game_text_y, game_hiscore_names[game_state]);
+
+				txt_font_printf(NULL, NULL, 0xd2, game_text_x, 0x84, game_hiscore_difficulty[game_state] + 0x7b,
+						"<%ld %c", game_hiscore_points[game_state], game_hiscore_difficulty[game_state] + 0x7b);
+				game_state++;
+			}
+
+			if ((game_input_curr_key == 'q') || (game_input_curr_key == 'Q')) {
+				game_input_curr_key = 0;
+			}
+
+			game_switch_task();
+		} while ((game_exit_loop_now_flag == 0) && (game_postcb_currfrme < game_postcb_maxfrme - 3));
+
+		if (game_demo_mode == 0) {
+			break;
+		}
+
+		if ((game_input_curr_button1 != 0) || (game_exit_loop_now_flag != 0) || (game_input_curr_key != 0)) {
+			break;
+		}
+
+		/* Play Cutscene demo */
+		sou_engine_stop_all();
+		game_cmd_newanim("OPEN/O1OPEN.ANM", 0x420, 0, 0, -1);
+
+		do {
+			if ((game_input_curr_button1 != 0) || (game_exit_loop_now_flag != 0) || (game_input_curr_key != 0)) {
+				game_demo_mode = 0;
+				break;
+			}
+
+			if ((game_input_curr_key == 'q') || (game_input_curr_key == 'Q')) {
+				game_input_curr_key = 0;
+			}
+
+			game_switch_task();
+		} while ((game_exit_loop_now_flag == 0) && (game_postcb_currfrme < game_postcb_maxfrme - 3));
+	}
+
+	game_demo_mode = 0;
+
+	if ((game_input_curr_key == 'q') || (game_input_curr_key == 'Q') || (game_exit_loop_now_flag != 0)) {
+		game_input_curr_key = 0;
+	}
+
+	if ((game_input_curr_key == 0) || (game_input_curr_key == 0x1b)) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+
+	/* 3. Main Menu Initialization */
+	sou_engine_set_volume(0);
+	game_cmd_newanim("OPEN/O1OPTION.ANM", 0x420, 0, 0, -1);
+	game_switch_task();
+
+	game_state = 1;
+
+	while ((game_state != 0) && (game_exit_loop_now_flag == 0)) {
+		txt_font_print(NULL, NULL, 0xa0, 0x1e, 0x280, 0x64, "MAIN MENU");
+		txt_font_print(NULL, NULL, 0xa0, 0x3c, 0x280, 0x64, "<START NEW GAME");
+		txt_font_print(NULL, NULL, 0xa0, 0x4b, 0x280, 0x64, "<GAME OPTIONS");
+		txt_font_print(NULL, NULL, 0xa0, 0x5a, 0x280, 0x64, "<ENTER PASSCODE");
+		txt_font_print(NULL, NULL, 0xa0, 0x69, 0x280, 0x64, "<CONTINUE DEMO");
+		txt_font_print(NULL, NULL, 0xa0, 0x78, 0x280, 0x64, "<EXIT TO DOS");
+
+		/* Loop the background animation cleanly */
+		if (game_postcb_currfrme == game_postcb_maxfrme - 51) {
+			game_anm_set_playpos(0x20, game_postcb_maxfrme - 51, 0);
+		}
+
+		/* Handle Selection */
+		if (((game_input_curr_button1 != 0) && (game_input_prev_button1 == 0)) ||
+			(game_input_curr_key == '\n') || (game_input_curr_key == '\r')) {
+
+			game_input_curr_key = 0;
+			switch (game_state) {
+				case 1: /* START NEW GAME */
+					game_state = 0;
+					break;
+				case 2: /* GAME OPTIONS */
+					game_cmd_newanim("OPEN/O1HWARE.ANM", 0x420, 0, 0, -1);
+					while (game_postcb_currfrme < 15) {
+						game_switch_task();
+					}
+					game_options_config_screen(0, 1);
+					game_cmd_newanim("OPEN/O1OPTION.ANM", 0x420, 0, 0, -1);
+
+					while (game_input_curr_button1 == 0) {
+						game_switch_task();
+					}
+					while (game_input_curr_button1 != 0) {
+						game_switch_task();
+					}
+					break;
+				case 3: /* ENTER PASSCODE */
+					while (game_input_curr_button1 == 0) {
+						game_switch_task();
+					}
+					game_passcode_result = game_enter_passcode_screen();
+					if (game_passcode_result != 0) {
+						game_state = 0;
+					}
+					break;
+				case 4: /* CONTINUE DEMO */
+					break;
+				case 5: /* EXIT TO DOS */
+					anm_cmd_quit();
+					break;
+			}
+		} else {
+			/* Handle Mouse Deadzone and Debounce */
+			if (game_input_curr_y <= 80 && game_input_curr_y >= -80) {
+				game_mouse_delay = 3;
+			} else {
+				game_mouse_delay++;
+				if (game_mouse_delay > 3) {
+					game_mouse_delay = 0;
+
+					bool is_down = (game_input_curr_y > 0);
+					bool is_flipped = (game_input_flipy != 0);
+					game_input_curr_key = (is_down != is_flipped) ? 0x82 : 0x81;
+
+					ctl_mouse_reset();
+				}
+			}
+
+			if (game_input_curr_key == 0x82) {
+				game_state++;
+				if (game_state > 5) game_state = 1;
+				game_input_curr_key = 0;
+			} else if (game_input_curr_key == 0x81) {
+				game_state--;
+				if (game_state < 1) game_state = 5;
+				game_input_curr_key = 0;
+			}
+
+			/* draw box around selected menu item */
+			msc_draw_rect(game_postcb_dst, 50, (game_state * 15) + 0x2c,
+				      220, 15, 223, 320, 199);
+		}
+		game_switch_task();
+	}
+
+	/* Menu Fade Out */
+	for (game_state = 0; game_state < 16; game_state++) {
+		if (game_exit_loop_now_flag != 0)
+			break;
+
+		vid_palette_set_intensity(AG(anm_anim_header_current).animpal, (15 - game_state) << 4);
+
+		if (game_postcb_currfrme == game_postcb_maxfrme - 51) {
+			game_anm_set_playpos(0x20, game_postcb_maxfrme - 51, 0);
+		}
+		game_switch_task();
+	}
+
+	sou_engine_stop_all();
+	sou_engine_set_volume(127);
+	game_level_clear_resources();
+
+	game_player_health = 0x62;
+	game_player_lives = 3;
+	game_player_score = 0;
+
+	if (game_passcode_result == 0) {
+		game_set_next_level(game_level1_func);
+	} else if (game_passcode_result < 4) {
+		game_difficulty_index = game_passcode_result - 1;
+		game_exit_loop_now_flag = 1;
+		game_set_next_level(game_cutscene1_func);
+	} else if (game_passcode_result <= 6) {
+		game_difficulty_index = game_passcode_result - 4;
+		game_exit_loop_now_flag = 1;
+		game_set_next_level(game_cutscene2_func);
+	} else if (game_passcode_result < 10) {
+		game_difficulty_index = game_passcode_result - 7;
+		game_exit_loop_now_flag = 1;
+		game_set_next_level(game_cutscene3_func);
+	} else if (game_passcode_result <= 12) {
+		game_difficulty_index = game_passcode_result - 10;
+		game_exit_loop_now_flag = 1;
+		game_set_next_level(game_level15_func);
+	} else if (game_passcode_result <= 15) {
+		game_difficulty_index = game_passcode_result - 13;
+		game_exit_loop_now_flag = 1;
+		game_set_next_level(game_cutscene4_func);
+	}
 
 	return 0;
 }

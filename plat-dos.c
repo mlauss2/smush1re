@@ -19,6 +19,14 @@
 
 uint16_t RA1DOS_app_DS;		/* DS segment of the application */
 
+uint16_t	ctl_joy_poll_duration_cntr;			/* 00291b4b */
+uint16_t	ctl_joy_poll_start_PITstamp;			/* 00291b49 */
+uint16_t	ctl_joy_poll_duration_cntr;			/* 00291b4b */
+uint16_t	ctl_joy_axis_poll_stamp[8];			/* 002ae048 */
+uint16_t	ctl_joy_axis_readings[8];			/* 002ae058 */
+uint16_t	ctl_joy_poll_attempts_max;			/* 002ae078 */
+
+
 
 void __interrupt __far RA1DOS_int24h_handler_func(void);			/* 00263001 */
 #pragma aux RA1DOS_int24h_handler_func =	\
@@ -377,8 +385,24 @@ void __interrupt __far sou_engine_fill(union REGS regs)
 	}
 }
 
+int16_t ctl_joy_x86_pc_poll_port(void)				/* 00291a6d */
+{
 
+}
 
-
+void ctl_joy_platupdate_axes(uint16_t *a0, uint16_t *a1, uint16_t *a2, uint16_t *a3,
+			     uint16_t *a4, uint16_t *a5, uint16_t *a6, uint16_t *a7)
+{
+	ctl_joy_x86_pc_poll_port();
+	ctl_joy_x86_poll_translate_readings();
+	*a0 = ctl_joy_translated_axis_values[0];
+	*a1 = ctl_joy_translated_axis_values[1];
+	*a2 = ctl_joy_translated_axis_values[4];
+	*a3 = ctl_joy_translated_axis_values[5];
+	*a4 = ctl_joy_translated_axis_values[2];
+	*a5 = ctl_joy_translated_axis_values[3];
+	*a6 = ctl_joy_translated_axis_values[6];
+	*a7 = ctl_joy_translated_axis_values[7];
+}
 
 #endif		 /* __WATCOM_C__ */

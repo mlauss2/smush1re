@@ -121,4 +121,7 @@ void sou_engine_start_stream(uint8_t *data, uint32_t datasize, int32_t tid,
 
 void sou_engine_fill_core(void);
 
+void sou_drv_set_volume(uint16_t vol);
+uint16_t sou_drv_get_volume(void);
+
 #endif

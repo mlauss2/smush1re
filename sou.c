@@ -400,3 +400,17 @@ void sou_engine_sethook(uint8_t index,uint8_t val)
 	/* index 0xff -> sou_global_volume! */
 	AG(sou_hooks)[index] = val;
 }
+
+void sou_drv_set_volume(uint16_t vol)
+{
+	if (AG(sou_soudrv_cb7_setvol_fn))
+		AG(sou_soudrv_cb7_setvol_fn)(vol);
+}
+
+uint16_t sou_drv_get_volume(void)
+{
+	if (AG(sou_soudrv_cb8_getvol_fn)) {
+		return AG(sou_soudrv_cb8_getvol_fn)();
+	}
+	return 127;
+}

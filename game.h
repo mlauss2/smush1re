@@ -53,10 +53,10 @@ void game_read_hiscore_file(void);
 
 void game_switch_task(void);								/* 00292500 */
 void game_reset_lvldata(uint16_t diffidx);						/* 002925fa */
-void game_enter_passcode_screen(void);							/* 00292687 */
+int16_t game_enter_passcode_screen(void);						/* 00292687 */
 void game_pause(void);									/* 00292a46 */
 void game_options_joystick_screen(void);						/* 00292acc */
-void game_options_config_screen(void);							/* 00292e4c */
+void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en);			/* 00292e4c */
 void game_options_quit_screen(void);							/* 00293553 */
 void game_load_level_resources(char *l2f, char *bf, char *ef, char *bangf, char *lf);	/* 00293719 */
 void game_level_clear_resources(void);							/* 0029379b */

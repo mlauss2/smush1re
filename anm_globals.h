@@ -11,6 +11,8 @@
  * they dont contaminate the global namespace.
  */
 struct _anm_globals_v1 {
+
+	uint16_t		ctl_joy_translated_axis_values[8];	/* 002ae07c */
 	uint8_t			sou_music_enabled;		/* 002ae96d */
 	uint8_t			sou_sfx_enabled;		/* 002ae96e */
 	uint8_t			anm_text_force_enable;		/* 002ae96f */
@@ -39,6 +41,19 @@ struct _anm_globals_v1 {
 	char			sou_soudrv_cfgstr1[100];	/* 002b21a8 */
 	char			sou_soudrv_cfgstr2[100];	/* 002c220c */
 	char			anm_errstr[104];		/* 002b2270 */
+
+	uint8_t			ctl_mou_enabled;		/* 002b22d8 */
+	uint8_t			ctl_joy_enabled;		/* 002b22d9 */
+	int16_t			ctl_j_minx;			/* 002b22da */
+	int16_t			ctl_j_miny;			/* 002b22dc */
+	int16_t			ctl_j_maxx;			/* 002b22de */
+	int16_t			ctl_j_maxy;			/* 002b22e0 */
+	int16_t 		ctl_j_scalex1;			/* 002b22e2 */
+	int16_t 		ctl_j_scalex2;			/* 002b22e4 */
+	int16_t 		ctl_j_scaley1;			/* 002b22e6 */
+	int16_t 		ctl_j_scaley2;			/* 002b22e8 */
+	uint8_t			ctl_j_calibrating;		/* 002b22ea */
+	uint8_t			ctl_mou_pos_changed;		/* 002b22eb */
 
 	void *			fle_handles[10];		/* 002b22ec */
 
@@ -121,6 +136,30 @@ struct _anm_globals_v1 {
 
 	uint8_t			*fobdec_c4_last_tilestore;	/* 002b6f8c */
 
+	int16_t			ctl_j_centy;			/* 002b7760 */
+	int16_t			ctl_j_centx;			/* 002b7762 */
+	int16_t			ctl_mousedrv_xpos;		/* 002b7764 */
+	int16_t			ctl_mousedrv_ypos;		/* 002b7766 */
+
+	int16_t			ctl_j_axis7;			/* 002b7768 */
+	int16_t			ctl_j_axis6;			/* 002b776a */
+	int16_t			ctl_j_axis3;			/* 002b776c */
+	int16_t			ctl_j_axis2;			/* 002b776e */
+	int16_t			ctl_mousedrv_button2;		/* 002b7770 */
+	int16_t			ctl_mousedrv_button1;		/* 002b7772 */
+	int16_t			ctl_mouse_xpos;			/* 002b7774 */
+	int16_t			ctl_mouse_ypos;			/* 002b7776 */
+	int16_t			ctl_j_axis5;			/* 002b7778 */
+	int16_t			ctl_j_axis1;			/* 002b777a */
+	int16_t			ctl_j_axis4;			/* 002b777c */
+	int16_t			ctl_j_axis0;			/* 002b777e */
+	uint8_t			ctl_mousedrv_in_handler;	/* 002b7780 */
+	uint8_t			ctl_input_updates_locked;	/* 002b7781 */
+	int16_t			ctl_input_mouse_ypos_last;	/* 002b7782 */
+	int16_t			ctl_input_mouse_xpos_last;	/* 002b7784 */
+	int16_t			ctl_input_mouse_xpos;		/* 002b7786 */
+	int16_t			ctl_input_mouse_ypos;		/* 002b7788 */
+	/* pad 2 bytes */
 	void *			fle_buffer;			/* 002b778c */
 	uintptr_t		fle_buffer_2kaligned_end;	/* 002b7790 */
 	uint32_t		fle_bufsize_2kaligned;		/* 002b7794 */

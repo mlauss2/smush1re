@@ -391,11 +391,13 @@ void sys_timer_continue(void)
 	sys_timer_continue_generic();
 }
 
-void ctl_joy_enable(void)
+void ctl_init_platform(int mou_en, int joy_en)
 {
 
 }
 
-void ctl_mou_enable(void)
+void ctl_joy_plat_update_axes(uint16_t *a0, uint16_t *a1, uint16_t *a2, uint16_t *a3,
+			      uint16_t *a4, uint16_t *a5, uint16_t *a6, uint16_t *a7)
 {
+
 }
