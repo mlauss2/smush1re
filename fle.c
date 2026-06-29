@@ -12,6 +12,7 @@
 uint32_t fle_open(char *filename, char *openmode)
 {
 	FILE *f;
+	ssize_t r;
 	uint32_t u32, cs;
 	int i, j, ckscnt;
 	char chkfile[80], *s;
@@ -51,7 +52,7 @@ uint32_t fle_open(char *filename, char *openmode)
 			fseek(chkf, 0, SEEK_SET);
 			int16_t ret = mem_blk_alloc((void **)&(AG(fle_cksum_file_buffer)[i]), cs);
 			if (ret == 0) {
-				(void)fread(AG(fle_cksum_file_buffer)[i], cs, 1, chkf);
+				r = fread(AG(fle_cksum_file_buffer)[i], cs, 1, chkf);
 				if (AG(smush_debug_enabled))
 					printf("Reading checksum size " PRIu32 "\n", cs);
 			}
@@ -119,6 +120,7 @@ int32_t fle_cd_read(uint32_t flehandle,void *dstbuf,uint32_t size)
 {
 	int dataread, retrycnt, retry2;
 	uint32_t r, v1, v2, v3, *d;
+	ssize_t rs;
 
 	retrycnt = 50;
 	retry2 = 5;
@@ -156,7 +158,7 @@ int32_t fle_cd_read(uint32_t flehandle,void *dstbuf,uint32_t size)
 				 * drive to refocus, and maybe get a better read result
 				 */
 				fseek(AG(fle_handles)[flehandle], 0, SEEK_SET);
-				(void)fread(dstbuf, 1, size, AG(fle_handles)[flehandle]);
+				rs = fread(dstbuf, 1, size, AG(fle_handles)[flehandle]);
 			} else {
 				/* give up, drive cannot recover this block */
 				if (AG(smush_debug_enabled)) {
@@ -196,11 +198,13 @@ uint32_t fle_tell(uint32_t flehandle)
 int16_t fle_streamer_init(uint32_t size)
 {
 	int16_t ret;
-
-	ret = mem_blk_alloc((void **)&(AG(fle_buffer)), size + 0xffff);
+	void *buf;
+	ret = mem_blk_alloc((void **)&buf, size + 0xffff);
+	//ret = mem_blk_alloc((void **)&(AG(fle_buffer)), size + 0xffff);
 	if (ret == 0) {
+		AG(fle_buffer) = (uintptr_t)buf;
 		AG(fle_bufsize_2kaligned) = ((size >> 8) & 0x00fffff8) << 8;
-		AG(fle_buffer_2kaligned_end) = (uintptr_t)((uintptr_t)AG(fle_buffer) + AG(fle_bufsize_2kaligned));
+		AG(fle_buffer_2kaligned_end) = AG(fle_buffer) + AG(fle_bufsize_2kaligned);
 		AG(fle_streamer_seeknew_flag) = 0;
 		AG(fle_streamer_readbuffer_wrptr) = (uintptr_t)AG(fle_buffer);
 		AG(fle_streamer_readbuffer_rdptr) = (uintptr_t)AG(fle_buffer);
@@ -208,7 +212,7 @@ int16_t fle_streamer_init(uint32_t size)
 		AG(fle_streamer_inblk_offset) = 0;
 		AG(fle_streamer_fhandle) = 0;
 		AG(fle_streamer_dispense_inhibit) = 0;
-		msc_memset(AG(fle_buffer), 0, AG(fle_bufsize_2kaligned));
+		msc_memset(buf, 0, AG(fle_bufsize_2kaligned));
 	}
 	return ret;
 }
@@ -218,7 +222,7 @@ void fle_streamer_terminate(void)
 	mem_blk_free((void *)&(AG(fle_buffer)));
 }
 
-void fle_streamer_seek(uint32_t flehandle,int32_t seekofs)
+void fle_streamer_seek(uint32_t flehandle, int32_t seekofs)
 {
 	if (AG(smush_debug_enabled)) {
 		/* original has 2 nested loops to waste cycles to generate delay */
@@ -267,13 +271,13 @@ int8_t fle_streamer_check(uint32_t size)
 uint8_t *fle_streamer_dispense(uint32_t size)
 {
 	int c1, c2;
-	uint32_t s1;
+	int32_t s1;
 
 	if ((AG(fle_streamer_fhandle) == 0) || (AG(fle_streamer_dispense_inhibit) != 0))
 		return (uint8_t *)(-1);
 
-	if (AG(fle_002b238e) == 0) {
-		AG(fle_002b238e) = 1;
+	if (AG(fle_buffer_ready) == 0) {
+		AG(fle_buffer_ready) = 1;
 		AG(fle_streamer_readbuffer_rdptr) += AG(fle_streamer_readbuffer_lastreadsize);
 		AG(fle_streamer_readbuffer_lastreadsize) = 0;
 		if (AG(fle_buffer_2kaligned_end) <= AG(fle_streamer_readbuffer_rdptr)) {
@@ -291,7 +295,7 @@ uint8_t *fle_streamer_dispense(uint32_t size)
 		}
 		if ((c1 == 0) && (c2 == 0)) {
 			fle_streamer_switch();
-			AG(fle_002b238e) = 0;
+			AG(fle_buffer_ready) = 0;
 			return NULL;
 		}
 	}
@@ -300,11 +304,11 @@ uint8_t *fle_streamer_dispense(uint32_t size)
 		size += AG(fle_streamer_inblk_offset);
 	}
 	if (fle_streamer_check(size) != 0) {
-		AG(fle_002b238e) = 0;
+		AG(fle_buffer_ready) = 0;
 		s1 = AG(fle_streamer_readbuffer_rdptr) + size - AG(fle_buffer_2kaligned_end);
 		AG(fle_streamer_readbuffer_lastreadsize) = size;
 		if (s1 > 0) {
-			msc_memcpy((void *)AG(fle_buffer_2kaligned_end), AG(fle_buffer), s1);
+			msc_memcpy((void *)AG(fle_buffer_2kaligned_end), (void *)AG(fle_buffer), s1);
 		}
 		if ((AG(fle_streamer_seeknew_flag) == 0) && (AG(fle_streamer_inblk_offset) != 0)) {
 			uint8_t *r = (uint8_t *)(AG(fle_streamer_readbuffer_rdptr) + AG(fle_streamer_inblk_offset));
@@ -320,12 +324,13 @@ void fle_streamer_acquire(void)
 {
 	uint32_t size;
 
+
 	if (0 == AG(fle_streamer_fhandle))
 		return;
 
 	if ((AG(fle_streamer_readbuffer_wrptr) < AG(fle_streamer_readbuffer_rdptr)) ||
-	    (AG(fle_streamer_readbuffer_rdptr) == (uintptr_t)AG(fle_buffer))) {
-		if ((AG(fle_streamer_readbuffer_rdptr) == (uintptr_t)AG(fle_buffer)) &&
+	    (AG(fle_streamer_readbuffer_rdptr) == AG(fle_buffer))) {
+		if ((AG(fle_streamer_readbuffer_rdptr) == AG(fle_buffer)) &&
 		    (0x800 < (AG(fle_buffer_2kaligned_end) - AG(fle_streamer_readbuffer_wrptr)))) {
 			size = (AG(fle_buffer_2kaligned_end) - AG(fle_streamer_readbuffer_wrptr)) - 0x800;
 		} else {
@@ -342,7 +347,13 @@ void fle_streamer_acquire(void)
 	if (size > 0x10000) {
 		size = 0x10000;
 	}
-	fle_cd_read(AG(fle_streamer_fhandle), (void *)AG(fle_streamer_readbuffer_wrptr), size);
+
+	if (size == 0) {
+		sys_delay(100);
+	} else {
+		sys_delay(1345);
+		fle_cd_read(AG(fle_streamer_fhandle), (void *)AG(fle_streamer_readbuffer_wrptr), size);
+	}
 	AG(fle_streamer_readbuffer_wrptr) += size;
 	if (AG(fle_buffer_2kaligned_end) <= AG(fle_streamer_readbuffer_wrptr)) {
 		AG(fle_streamer_readbuffer_wrptr) -= AG(fle_bufsize_2kaligned);

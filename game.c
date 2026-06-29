@@ -95,7 +95,7 @@ uint8_t  game_snddrv_volume;		/* 002ae977 */
 
 uint8_t  DAT_002b5610;			/* 002b5610; GAM1 26 in pause called flag */
 uint8_t  DAT_002b5611;
-uint8_t  DAT_002b573e;
+
 uint8_t  game_curr_difficulty;
 
 struct anm_res game_anmres_laser2;	/* 002aed7f */
@@ -164,15 +164,26 @@ uint16_t game_input_curr_button2;	/* 002b5582 */
 int16_t  game_joycfg_minmax[4];		/* 002b5584 */
 uint16_t game_input_prev_button1;	/* 002b558c */
 uint16_t game_input_prev_button2;	/* 002b558e */
-
+int16_t  DAT_002b5590[10];		/* 002b5590 */
+int16_t  DAT_002b55a4[10];		/* 002b55a4 */
+int16_t  DAT_002b55b8[10];		/* 002b55b8 */
+int16_t  DAT_002b55cc[10];		/* 002b55cc */
 uint16_t game_player_targets_hit;	/* 002b55e0 */
 
 uint16_t DAT_002b55e6;			/* 002b55e6 */
-
+int16_t  DAT_002b55f6[2];		/* 002b55f6 */
+int16_t  DAT_002b55fa[2];		/* 002b55fa */
+int16_t  DAT_002b55fe[2];		/* 002b55fe */
+int16_t  DAT_002b5602[2];		/* 002b5602 */
+int16_t  DAT_002b5606[2];		/* 002b5606 */
+int16_t  DAT_002b560a[2];		/* 002b560a */
 uint8_t  game_state_flags[2];		/* 002b560e */
 uint8_t  DAT_002b5610;			/* 002b5610 */
 uint8_t  DAT_002b5611;			/* 002b5611 */
 uint8_t  game_hide_table[300];		/* 002b5612 */
+uint8_t  game_joy_secret_unlock;	/* 002b573e , set when doing up-down-left-right during lucasarts logo */
+uint8_t  game_hiscore_changed;		/* 002b573f */
+uint16_t game_curr_levelidx;		/* 002b5740 */
 uint16_t DAT_002b5746;			/* 002b5746 */
 uint8_t *game_postcb_dst;		/* 002b5748 */
 uint8_t *game_postcb_statusbar;		/* 002b574c */
@@ -185,9 +196,9 @@ jmp_buf  game_jmpbuf_2;			/* 002b578e */
 uint8_t  game_jmpbuf_2_valid;		/* 002b57c2 */
 uint8_t  game_exit_loop_now_flag;	/* 002b57c3 */
 game_level_fn_t   game_curr_levelfunc;	/* 002b57c4 */
-uint8_t	 game_pal_copy[768];		/* 002b57c8 - */
+uint8_t	 game_palette[768];		/* 002b57c8 - */
 
-uint32_t DAT_002b6294;			/* 002b6294; STACK POINTER moved to in game_level_taskswitcher() */
+uint32_t DAT_002b6294;			/* 002b6294; STACK POINTER moved to in game_yield() */
 uint32_t game_player_score_newlife;	/* 002b6298 */
 uint8_t  game_hiscore_changed;		/* 002b732f */
 
@@ -281,6 +292,7 @@ void game_cfg_read_rebltune_txt(void)
 {
 	char temp[152];
 	size_t j;
+	ssize_t r;
 	int i;
 
 	FILE *f = fopen("REBLTUNE.TXT", "r");
@@ -289,14 +301,14 @@ void game_cfg_read_rebltune_txt(void)
 		return;
 	}
 	j = 149;
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
 	for (i = 0; i < 21; i++) {
-		fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
+		r = fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
 			 game_rebltune[0][i].name,  &game_rebltune[0][i].roll,
 			&game_rebltune[0][i].lift,  &game_rebltune[0][i].slide,
 			&game_rebltune[0][i].drift, &game_rebltune[0][i].snap,
@@ -305,12 +317,12 @@ void game_cfg_read_rebltune_txt(void)
 			&game_rebltune[0][i].time,  &game_rebltune[0][i].level,
 			&game_rebltune[0][i].bonus, &game_rebltune[0][i].flags);
 	}
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
 	for (i = 0; i < 21; i++) {
-		fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
+		r = fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
 			 game_rebltune[1][i].name,  &game_rebltune[1][i].roll,
 			&game_rebltune[1][i].lift,  &game_rebltune[1][i].slide,
 			&game_rebltune[1][i].drift, &game_rebltune[1][i].snap,
@@ -319,12 +331,12 @@ void game_cfg_read_rebltune_txt(void)
 			&game_rebltune[1][i].time,  &game_rebltune[1][i].level,
 			&game_rebltune[1][i].bonus, &game_rebltune[1][i].flags);
 	}
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
-	getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
+	r = getline((char **)temp, &j, f);
 	for (i = 0; i < 21; i++) {
-		fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
+		r = fscanf(f, "%6s %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd %5hd\n",
 			 game_rebltune[2][i].name,  &game_rebltune[2][i].roll,
 			&game_rebltune[2][i].lift,  &game_rebltune[2][i].slide,
 			&game_rebltune[2][i].drift, &game_rebltune[2][i].snap,
@@ -351,12 +363,13 @@ void game_write_hiscore_file(void)
 void game_read_hiscore_file(void)
 {
 	size_t s;
+	ssize_t r;
 	FILE *f = fopen("REBEL.PTS", "rb");
 	if (!f)
 		return;
 	for (int i = 0; i < 10; i++) {
 		s = 10;
-		getline((char **)&(game_hiscore_names[i]), &s, f);
+		r = getline((char **)&(game_hiscore_names[i]), &s, f);
 		int t = strlen(game_hiscore_names[i]);
 		game_hiscore_names[i][9] = 0;
 		for (int j = 8; j; j--) {
@@ -366,8 +379,8 @@ void game_read_hiscore_file(void)
 			}
 		}
 	}
-	fread(game_hiscore_points, 10, 4, f);
-	fread(game_hiscore_difficulty, 10, 1, f);
+	r = fread(game_hiscore_points, 10, 4, f);
+	r = fread(game_hiscore_difficulty, 10, 1, f);
 	fclose(f);
 }
 
@@ -401,7 +414,8 @@ void game_main(int16_t debug)
 	DAT_002b5610 = 0;		/* GAME pause/gam1a ? */
 	DAT_002b5611 = 0;
 	game_curr_difficulty = 0;
-	DAT_002b573e = 0;		/* joystick calib? */
+	game_joy_secret_unlock = 0;	/* u-d-l-r joy move during LEC logo */
+	game_curr_levelidx = 0;		/* level password index */
 	anm_resource_load(&game_anmres_DISPLAYNUT, "SYS/DISPLAY.NUT", 1);
 	res_resource_load("SYS/LASRSHOT.SAD", &game_sound_LASRSHOT);
 	res_resource_load("SYS/EXPLODE.SAD",  &game_sound_EXPLODE);
@@ -427,23 +441,34 @@ void game_main(int16_t debug)
 	anm_resource_free(&game_anmres_DISPLAYNUT);
 }
 
-int16_t game_level_taskswitcher(void)
+void game_clear_jmp2(void)
+{
+	game_jmpbuf_2_valid = 0;
+}
+
+/* yields to the other jmpbuf if set */
+int16_t game_yield(void)
 {
 	int ret;
 
 	ret = setjmp(game_jmpbuf_1);
+	printf("game_yield: setjmp(game_jmpbuf_1) = %d\n", ret);
 	if (ret != 0) {
 		return game_levelfunc_retval;
 	}
 	if (game_jmpbuf_2_valid) {
 		game_jmpbuf_2_valid = 0;
+		printf("game_yield: longjmp(game_jmpbuf_2, 1)\n");
 		longjmp(game_jmpbuf_2, 1);
 	}
 	game_jmpbuf_2_valid = 0;
-	/* TODO */
-	/* stack switch: mov dx, ds; mov eax, DAT_002b6294; mov ss,dx; mov esp,eax */
-	/* TODO */
+#ifdef __WATCOMC__
+	/* FIXME verify */
+	_asm { mov dx, ds; mov eax, DAT_002b6294; mov ss,dx; mov esp,eax }
+	/* FIXME */
+#endif
 	game_levelfunc_retval = game_curr_levelfunc();
+	printf("game_yield: longjmp(game_jmpbuf_1, 2)\n");
 	longjmp(game_jmpbuf_1, 2);
 }
 
@@ -468,10 +493,13 @@ void game_switch_task(void)
 		game_pause();
 	}
 	ret = setjmp(game_jmpbuf_2);
+	printf("game_switch_task(): setjmp(game_jmpbuf_2) = %d\n", ret);
 	if (ret == 0) {
 		game_jmpbuf_2_valid = 1;
+		printf("game_switch_task(): longjmp(game_jmpbuf_1, 1)\n");
 		longjmp(game_jmpbuf_1, 1);
 	}
+	printf("game_switch_task(): returning to caller!\n");
 }
 
 void game_reset_lvldata(uint16_t diffidx)
@@ -486,15 +514,132 @@ void game_reset_lvldata(uint16_t diffidx)
 //	game_target_proximity = 0;
 //	game_lvl4_prot_target1 = 0;
 //	game_lvl4_prot_target2 = 0;
-//	DAT_002b55f6[0] = 0;
-//	DAT_002b55f6[1] = 0;
+	DAT_002b55f6[0] = 0;
+	DAT_002b55f6[1] = 0;
 	game_target_currcnt = 0;
 	game_target_lastcnt = 0;
 }
 
-int16_t game_enter_passcode_screen(void)
+uint16_t game_enter_passcode_screen(void)
 {
+	char pwd_buffer[20] = {0};
+	char cursor_char_str[2] = {0};
+	uint8_t can_use_pwd = 3;
+	uint8_t exit_flag = 0;
+	int16_t cursor_anim_offset = 0;
+	int idx;
 
+	memcpy(pwd_buffer, "< ", 2);
+
+	if (game_curr_levelidx != 0) {
+		strcat(pwd_buffer, game_level_passwords[game_curr_levelidx - 1]);
+		can_use_pwd = 1;
+	}
+
+	while ((exit_flag == 0) && (game_exit_loop_now_flag == 0)) {
+		if (game_postcb_currfrme == (game_postcb_maxfrme - 0x33)) {
+			game_anm_set_playpos(0x20, game_postcb_maxfrme - 0x33, 0);
+		}
+
+		txt_font_print(NULL, NULL, 160, 75, 640, 100, "Enter Passcode");
+		txt_font_print(NULL, NULL, 160, 95, 640, 100, pwd_buffer);
+
+		idx = (can_use_pwd == 0) ? 0x37 : (can_use_pwd - 1);
+		cursor_char_str[0] = game_levelpw_allowed_chars[idx];
+		txt_font_print(NULL, NULL, cursor_anim_offset + 145, 110, 640, 3, cursor_char_str);
+
+		cursor_char_str[0] = game_levelpw_allowed_chars[can_use_pwd];
+		txt_font_print(NULL, NULL, cursor_anim_offset + 160, 110, 640, (game_postcb_currfrme & 2), cursor_char_str);
+
+		idx = (can_use_pwd < 29) ? (can_use_pwd + 1) : 0;
+		cursor_char_str[0] = game_levelpw_allowed_chars[idx];
+		txt_font_print(NULL, NULL, cursor_anim_offset + 175, 110, 640, 3, cursor_char_str);
+
+		cursor_anim_offset = 0;
+
+		if (((game_input_curr_x < 0x33) || ((game_postcb_currfrme & 1) == 0)) && (game_input_curr_x < 0x65)) {
+			if (((game_input_curr_x < -0x32) && ((game_postcb_currfrme & 1) != 0)) || (game_input_curr_x < -100)) {
+				can_use_pwd = (can_use_pwd == 0) ? 29 : can_use_pwd - 1;
+				ctl_mouse_reset();
+				cursor_anim_offset = -7;
+			}
+		} else {
+			can_use_pwd = (can_use_pwd >= 29) ? 0 : can_use_pwd + 1;
+			ctl_mouse_reset();
+			cursor_anim_offset = 7;
+		}
+
+		if (game_input_curr_button1 != 0 && game_input_prev_button1 == 0) {
+			int len = strlen(pwd_buffer);
+			char c = game_levelpw_allowed_chars[can_use_pwd];
+
+			if (c == '^') {
+				if (len > 1)
+					pwd_buffer[len - 1] = 0;
+			} else if (c == '`') {
+				exit_flag = 1;
+			} else if (c == '_') {
+				if (len < 9) {
+					pwd_buffer[len + 0] = ' ';
+					pwd_buffer[len + 1] = 0;
+
+				}
+			} else if (len < 9) {
+				pwd_buffer[len + 0] = c;
+				pwd_buffer[len + 1] = 0;
+			}
+		}
+
+		if ((game_input_curr_button2 != 0) && (game_input_prev_button2 == 0))
+			exit_flag = 1;
+
+		if (game_input_curr_key != 0) {
+			int len = strlen(pwd_buffer);
+			if (isprint(game_input_curr_key)) {
+				if (len < 9) {
+					pwd_buffer[len + 0] = toupper(game_input_curr_key);
+					pwd_buffer[len + 1] = 0;
+				}
+			} else if ((game_input_curr_key == '\r') || (game_input_curr_key == 10)) {
+				exit_flag = 1;
+			} else if ((game_input_curr_key == 8) && (len > 1)) {
+				pwd_buffer[len - 1] = 0;
+			}
+			game_input_curr_key = 0;
+		}
+		game_switch_task();
+	}
+
+	for (int i = 0; i < (int)strlen(pwd_buffer); i++) {
+		pwd_buffer[i] = toupper(pwd_buffer[i]);
+	}
+
+	for (uint16_t i = 0; i < 15; i++) {
+		if (strcmp(&pwd_buffer[1], game_level_passwords[i]) == 0) {
+			game_curr_levelidx = i + 1;
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+void game_pause(void)
+{
+	game_state_flags[0] |= 0x20;
+	sou_pause();
+	anm_cmd_pause(1);
+	game_switch_task();
+	game_switch_task();
+	vid_palette_set_intensity(AG(anm_anim_header_current).animpal, 127);
+	game_input_curr_key = 0;
+	while (game_input_curr_key == 0) {
+		game_switch_task();
+	}
+	game_input_curr_key = 0;
+	vid_palette_set(AG(anm_anim_header_current).animpal);
+	anm_cmd_pause(0);
+	sou_resume();
+	game_state_flags[0] &= 0xdf;
 }
 
 void game_options_joystick_screen(void)
@@ -526,7 +671,7 @@ void game_options_joystick_screen(void)
 
 	vid_bitmap_clear(game_postcb_dst);
 	vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
-	vid_palette_set(game_pal_copy);
+	vid_palette_set(game_palette);
 
 	game_joycfg_minmax[0] = -50;
 	game_joycfg_minmax[1] = -50;
@@ -535,7 +680,7 @@ void game_options_joystick_screen(void)
 
 	while ((state < 4) && (game_exit_loop_now_flag == 0)) {
 		vid_bitmap_clear(game_postcb_dst);
-		txt_font_print(NULL, &viewport, 160, 10, 0x280, 100, "JOYSTICK CALIBRATION");
+		txt_font_print(NULL, &viewport, 160, 10, 640, 100, "JOYSTICK CALIBRATION");
 		char *instruction;
 		switch (state) {
 			case 0:
@@ -550,13 +695,13 @@ void game_options_joystick_screen(void)
 				break;
 		}
 
-		txt_font_print(NULL, &viewport, 160, 25, 0x280, 100, instruction);
-		txt_font_print(NULL, &viewport, 160, 40, 0x280, 100, "<and press fire.");
+		txt_font_print(NULL, &viewport, 160, 25, 640, 100, instruction);
+		txt_font_print(NULL, &viewport, 160, 40, 640, 100, "<and press fire.");
 
 		if (state != 0) {
 			int16_t disp_x = (game_input_curr_x / 4) + 160;
 			int16_t disp_y = (game_input_curr_y / 4);
-			txt_font_printf(NULL, &viewport, 160, 175, 0x280, 100, "(%d,%d)", disp_x, disp_y);
+			txt_font_printf(NULL, &viewport, 160, 175, 640, 100, "(%d,%d)", disp_x, disp_y);
 		}
 
 		if (game_input_prev_button1 == 0 && game_input_curr_button1 != 0) {
@@ -627,7 +772,7 @@ void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en)
 	if (clrscr != 0) {
 		vid_bitmap_clear(game_postcb_dst);
 		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
-		vid_palette_set(game_pal_copy);
+		vid_palette_set(game_palette);
 	}
 
 	while (state != 0) {
@@ -635,48 +780,48 @@ void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en)
 			vid_bitmap_clear(game_postcb_dst);
 		}
 
-		txt_font_print(NULL, &viewport, 160, 30, 0x280, 100, "GAME OPTIONS");
-		txt_font_print(NULL, &viewport, 160, 45, 0x280, 100, "<EXIT MENU");
+		txt_font_print(NULL, &viewport, 160, 30, 640, 100, "GAME OPTIONS");
+		txt_font_print(NULL, &viewport, 160, 45, 640, 100, "<EXIT MENU");
 
 		if (sou_engine_gethook(4) == 0) {
-			txt_font_print(NULL, &viewport, 160, 60, 0x280, 100, "<ROOKIE1 IS MALE");
+			txt_font_print(NULL, &viewport, 160, 60, 640, 100, "<ROOKIE1 IS MALE");
 		} else {
-			txt_font_print(NULL, &viewport, 160, 60, 0x280, 100, "<ROOKIE1 IS FEMALE");
+			txt_font_print(NULL, &viewport, 160, 60, 640, 100, "<ROOKIE1 IS FEMALE");
 		}
 
 		if (AG(sou_music_enabled) == 0) {
-			txt_font_print(NULL, &viewport, 160, 75, 0x280, 100, "<MUSIC IS OFF");
+			txt_font_print(NULL, &viewport, 160, 75, 640, 100, "<MUSIC IS OFF");
 		} else {
-			txt_font_print(NULL, &viewport, 160, 75, 0x280, 100, "<MUSIC IS ON");
+			txt_font_print(NULL, &viewport, 160, 75, 640, 100, "<MUSIC IS ON");
 		}
 
 		if (AG(sou_sfx_enabled) == 0) {
-			txt_font_print(NULL, &viewport, 160, 90, 0x280, 100, "<SFX AND VOICE ARE OFF");
+			txt_font_print(NULL, &viewport, 160, 90, 640, 100, "<SFX AND VOICE ARE OFF");
 		} else {
-			txt_font_print(NULL, &viewport, 160, 90, 0x280, 100, "<SFX AND VOICE ARE ON");
+			txt_font_print(NULL, &viewport, 160, 90, 640, 100, "<SFX AND VOICE ARE ON");
 		}
 
 		if (AG(anm_text_force_enable) == 0) {
-			txt_font_print(NULL, &viewport, 160, 105, 0x280, 100, "<DIALOGUE TEXT IS OFF");
+			txt_font_print(NULL, &viewport, 160, 105, 640, 100, "<DIALOGUE TEXT IS OFF");
 		} else {
-			txt_font_print(NULL, &viewport, 160, 105, 0x280, 100, "<DIALOGUE TEXT IS ON");
+			txt_font_print(NULL, &viewport, 160, 105, 640, 100, "<DIALOGUE TEXT IS ON");
 		}
 
 		if (game_input_flipy == 0) {
-			txt_font_print(NULL, &viewport, 160, 120, 0x280, 100, "<CONTROLS ARE NORMAL");
+			txt_font_print(NULL, &viewport, 160, 120, 640, 100, "<CONTROLS ARE NORMAL");
 		} else {
-			txt_font_print(NULL, &viewport, 160, 120, 0x280, 100, "<CONTROLS ARE Y-FLIPPED");
+			txt_font_print(NULL, &viewport, 160, 120, 640, 100, "<CONTROLS ARE Y-FLIPPED");
 		}
 
-		txt_font_printf(NULL, &viewport, 160, 135, 0x280, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
+		txt_font_printf(NULL, &viewport, 160, 135, 640, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
 
 		if (diffchg_en != 0) {
 			if (game_difficulty_index == 0) {
-				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS EASY");
+				txt_font_print(NULL, &viewport, 160, 150, 640, 100, "<DIFFICULTY IS EASY");
 			} else if (game_difficulty_index == 1) {
-				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS NORMAL");
+				txt_font_print(NULL, &viewport, 160, 150, 640, 100, "<DIFFICULTY IS NORMAL");
 			} else {
-				txt_font_print(NULL, &viewport, 160, 150, 0x280, 100, "<DIFFICULTY IS HARD");
+				txt_font_print(NULL, &viewport, 160, 150, 640, 100, "<DIFFICULTY IS HARD");
 			}
 		}
 
@@ -725,7 +870,7 @@ void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en)
 						sou_drv_set_volume(game_snddrv_volume);
 						game_snddrv_volume = sou_drv_get_volume();
 
-						txt_font_printf(NULL, &viewport, 160, 135, 0x280, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
+						txt_font_printf(NULL, &viewport, 160, 135, 640, 100, "<VOLUME AT %hd PERCENT", (game_snddrv_volume * 100) / 127);
 
 						vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
 						AG(anm_anmflags_global) |= 0x8000;
@@ -803,6 +948,54 @@ void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en)
 	anm_cmd_pause(0);
 	sou_resume();
 	game_state_flags[1] &= 0xfe;
+}
+
+void game_options_quit_screen(void)
+{
+	struct anm_rect vp;
+
+	vp.x = 4;
+	vp.y = 4;
+	vp.w = 312;
+	vp.h = 192;
+	if ((game_input_curr_key == 0) || (game_input_curr_key == 27)) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+	game_state_flags[1] |= 1;
+	sou_pause();
+	anm_cmd_pause(1);
+	game_switch_task();
+	game_switch_task();
+	vid_bitmap_clear(game_postcb_dst);
+	vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+	vid_palette_set(game_palette);
+	while (1) {
+		game_switch_task();
+		if ((game_exit_loop_now_flag != 0) || (game_input_curr_key != 0))
+			break;
+		vid_bitmap_clear(game_postcb_dst);
+		txt_font_print(NULL, &vp, 160, 100, 640, 100 ,"Quit Game (Y/N)?");
+		vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+		AG(anm_anmflags_global) |= 0x8000;
+	}
+	vid_bitmap_clear(game_postcb_dst);
+	vid_blt_to_screen(game_postcb_dst, 4, 4, 4, 4, 316, 196, 320);
+	AG(anm_anmflags_global) |= 0x8000;
+	game_switch_task();
+	AG(anm_anmflags_global) &= 0x7fff;
+	if ((game_input_curr_key == 0) || (game_input_curr_key == 27)) {
+		game_exit_loop_now_flag = 0;
+		game_input_curr_key = 0;
+	}
+	vid_palette_set(AG(anm_anim_header_current).animpal);
+	anm_cmd_pause(0);
+	sou_resume();
+	game_state_flags[1] &= ~1;
+	if (tolower(game_input_curr_key) == 'y') {
+		anm_cmd_quit();
+	}
+	game_input_curr_key = 0;
 }
 
 void game_load_level_resources(char *l2f, char *bf, char *ef, char *bangf, char *lf)
@@ -888,9 +1081,38 @@ void game_anm_set_playpos(uint16_t anm_flags, int16_t splice1, int16_t splice2)
 
 void game_update_score(uint8_t *dst, uint8_t *statusbar)
 {
+	uint8_t dispflag = 0;
 
+	DAT_002b5610 = 0xFF;
+
+	int diff = game_difficulty_index;
+	int lvl = game_difficulty_level_index;
+	int16_t health = game_player_health;
+
+	if (health < (game_rebltune[diff][lvl].miss * 2) ||
+		health < (game_rebltune[diff][lvl].wham * 2) ||
+		health < (game_rebltune[diff][lvl].shot * 2))
+	{
+		if ((game_postcb_currfrme & 7) == 0) {
+			dispflag = 1;
+		}
+	}
+
+	/* looks like every 32 frames there's some bonus health regen */
+	if ((game_postcb_currfrme & 0x1F) == 0) {
+		if (health >= 0) {
+			game_player_score += game_rebltune[diff][lvl].time;
+			if (game_player_health < 0x62) {
+				game_player_health++;
+			}
+			dispflag = 1;
+		}
+	}
+
+	if (dispflag != 0) {
+		game_statusbar_score_update_and_display(statusbar);
+	}
 }
-
 void game_statusbar_score_update_and_display(uint8_t *statusbar)
 {
 	int m = game_difficulty_index;
@@ -908,7 +1130,7 @@ void game_statusbar_score_update_and_display(uint8_t *statusbar)
 	}
 
 	vid_statusbar_clear_buf(statusbar);
-	DAT_002b5611 = -1;
+	DAT_002b5611 = 1;
 	cr.x = 4;
 	cr.y = 0;
 	cr.w = 312;
@@ -961,6 +1183,85 @@ void game_anm_game_cb(uint8_t *dst, uint8_t *statusbar, struct anm_rect *viewpor
 			return;
 		}
 		DAT_002b5610 = 1;		/* game 26 in pause called */
+	}
+}
+
+
+int16_t game_get_angle(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
+{
+	int16_t dx = x2 - x1;
+	int16_t dy = y1 - y2;
+
+	if (dy < 0) {
+		dy = -dy;
+		dx = -dx;
+	}
+
+	if (dx >= 0) {
+		if (dy > 5 * dx)
+			return 0;
+		if (2 * dy > 3 * dx)
+			return 1;
+		if (3 * dy > 2 * dx)
+			return 2;
+		if (9 * dy > 2 * dx)
+			return 3;
+
+		return 4;
+	} else {
+		dx = -dx;
+		if (dy > 5 * dx)
+			return 0;
+		if (2 * dy > 3 * dx)
+			return -1;
+		if (3 * dy > 2 * dx)
+			return -2;
+		if (9 * dy > 2 * dx)
+			return -3;
+
+		return -4;
+	}
+}
+
+int16_t game_get_angle_and_anm_flip_flags(int16_t x1, int16_t y1, int16_t x2,
+					  int16_t y2, uint16_t *af_X, uint16_t *af_Y)
+{
+	int16_t dx = x1 - x2;
+	int16_t dy = y2 - y1;
+
+	if (dy < 0) {
+		dy = -dy;
+		*af_Y = ANM_FLAG_FOB_FLIPY; /* 0x4000 */
+	} else {
+		*af_Y = 0;
+	}
+
+	// 2. Determine X-Quadrant (Horizontal Flip)
+	if (dx < 0) {
+		dx = -dx;
+		*af_X = ANM_FLAG_FOB_FLIPX; /* 0x2000 */
+	} else {
+		*af_X = 0;
+	}
+
+	if (dy > 10 * dx) {
+		return 0;
+	} else if (3 * dy > 10 * dx) {
+		return 1;
+	} else if (dy > 2 * dx) {
+		return 2;
+	} else if (4 * dy > 5 * dx) {
+		return 3;
+	} else if (5 * dy > 4 * dx) {
+		return 4;
+	} else if (2 * dy > dx) {
+		return 5;
+	} else if (10 * dy > 3 * dx) {
+		return 6;
+	} else if (10 * dy > dx) {
+		return 7;
+	} else {
+		return 8;
 	}
 }
 
@@ -1027,7 +1328,7 @@ int16_t game_anm_frme_render_postcb (uint8_t *dst, uint8_t *statusbar,
 	ctl_pointer_query(&game_input_curr_x, &game_input_curr_y,
 			  &game_input_curr_button1, &game_input_curr_button2);
 	if (game_curr_levelfunc != NULL) {
-		if (DAT_002b573e != 0) {
+		if (game_joy_secret_unlock != 0) {
 			if ((game_input_curr_key == '-') && (game_player_health != 0)) {
 				game_player_health -= 10;
 				sou_engine_sethook(1, 1);
@@ -1043,7 +1344,7 @@ int16_t game_anm_frme_render_postcb (uint8_t *dst, uint8_t *statusbar,
 		game_postcb_currfrme = currfrme;
 		game_postcb_maxfrme = maxfrme;
 		game_postcb_viewport = viewport;
-		game_level_taskswitcher();
+		game_yield();
 	}
 
 	game_postcb_currfrme2 = currfrme;
@@ -1093,7 +1394,7 @@ int16_t game_anm_frme_render_postcb (uint8_t *dst, uint8_t *statusbar,
 				return 0;
 			}
 		}
-		if (DAT_002b573e == 0) {
+		if (game_joy_secret_unlock == 0) {
 			return 0;
 		}
 
@@ -1114,7 +1415,9 @@ int16_t game_run(char *animfile, int16_t repeatcnt, anm_frme_postcb_t postcb,
 	if (AG(game_current_statusbar_changed_flag_at_call))
 		i = AG(game_cfg_maxfps_1315);
 
-	game_jmpbuf_2_valid = 0;
+	AG(sys_timer_fps_tickthres) = AG(game_cfg_timerrate) / i;
+	AG(sys_cpu_usagecap_val) = AG(sys_cfg_cddrvusage);
+	game_clear_jmp2();
 	AG(sys_abort_flag) = 0;
 	game_anmflags_initial = initial_anm_flags;
 	ret = anm_init(NULL, postcb, game_callback, anm_hide_table_ptr, fle_bufsize);
@@ -1193,7 +1496,7 @@ void game_set_next_level(game_level_fn_t func)
 	game_state_flags[0] = (game_difficulty_index == 2) ? 2 : 0;
 	game_curr_levelfunc = func ? func : game_scene_calib_and_init;
 
-	if (DAT_002b573e == 0) {
+	if (game_joy_secret_unlock == 0) {
 		game_input_curr_key = 0;
 		return;
 	}
@@ -1231,19 +1534,85 @@ void game_level_render_introtext(char *line1, char *line2, uint16_t startfrme,
 	}
 }
 
+void game_level_end_print_summary(uint16_t frmestart, uint16_t frmeend, char *bonus1text,
+		char *bonus1text2, uint16_t bonus1val2, uint16_t bonus1_score,
+		char *bonus2_text, char *bonus2text2, uint16_t bonus2val2,
+		uint16_t bonus2_score, uint16_t game_level_index_new)
+{
+	char completion_bonus_str[80];
+	char bonus1_score_str[80];
+	char bonus1_str[80];
+	char bonus2_score_str[80];
+	char bonus2_str[80];
+
+	if (game_level_index_new != 0) {
+		game_curr_levelidx = game_level_index_new;
+	}
+
+	int16_t level_bonus = game_rebltune[game_difficulty_index][game_difficulty_level_index].level;
+	sprintf(completion_bonus_str, "Completions bonus: %d", level_bonus);
+
+	if (bonus1text != NULL) {
+		sprintf(bonus1_score_str, "Bonus: %d", bonus1_score);
+		sprintf(bonus1_str, bonus1text2, bonus1val2);
+	}
+
+	if (bonus2_text != NULL) {
+		sprintf(bonus2_score_str, "Bonus: %d", bonus2_score);
+		sprintf(bonus2_str, bonus2text2, bonus2val2);
+	}
+
+	while (game_postcb_currfrme < frmeend) {
+		txt_font_print(NULL, NULL, 160, 5, 0x200, game_postcb_currfrme - frmestart, "Chapter Complete");
+
+		if (game_postcb_currfrme > frmestart + 15) {
+			txt_font_print(NULL, NULL, 160, 25, 0x200, 100, completion_bonus_str);
+		}
+
+		if (bonus1text != NULL) {
+			if (game_postcb_currfrme > frmestart + 40 && game_postcb_currfrme < frmestart + 70) {
+				txt_font_print(NULL, NULL, 160, 50, 0x200, 100, bonus1text);
+				txt_font_print(NULL, NULL, 160, 70, 0x200, 100, bonus1_str);
+				txt_font_print(NULL, NULL, 160, 90, 0x200, 100, bonus1_score_str);
+			}
+		}
+
+		if (bonus2_text != NULL) {
+			if (game_postcb_currfrme > frmestart + 85 && game_postcb_currfrme < frmestart + 115) {
+				txt_font_print(NULL, NULL, 160, 50, 0x200, 100, bonus2_text);
+				txt_font_print(NULL, NULL, 160, 70, 0x200, 100, bonus2_str);
+				txt_font_print(NULL, NULL, 160, 90, 0x200, 100, bonus2_score_str);
+			}
+		}
+
+		if (game_level_index_new != 0) {
+			if (game_postcb_currfrme > frmestart + 10) {
+				txt_font_printf(NULL, NULL, 160, 115, 0x200, 100, "Password: %s", game_level_passwords[game_level_index_new - 1]);
+			}
+		}
+		game_switch_task();
+		if ((game_exit_loop_now_flag != 0) || (game_postcb_currfrme >= game_postcb_maxfrme - 5))
+			break;
+	}
+
+	game_player_score += bonus1_score;
+	game_player_score += bonus2_score;
+	game_player_score += level_bonus;
+}
+
 int16_t game_scene_calib_and_init(void)
 {
-	msc_memcpy(game_pal_copy, AG(anm_anim_header_current).animpal, 0x300);
-	game_pal_copy[0] = 0;
-	game_pal_copy[1] = 0;
-	game_pal_copy[2] = 0;
+	msc_memcpy(game_palette, AG(anm_anim_header_current).animpal, 0x300);
+	game_palette[0] = 0;
+	game_palette[1] = 0;
+	game_palette[2] = 0;
 	while ((game_exit_loop_now_flag == 0) && (game_postcb_currfrme < game_postcb_maxfrme + -3)) {
 		if (game_postcb_currfrme == 3) {
 			sys_timer_set_usagecap(1);
 		}
 		game_print_usagecap_string();
-		txt_font_printf(NULL, NULL, 0xa0, 0x28, 0x280, 0x96, "<%s", "Rebel Assault PC-CDROM V1.7");
-		txt_font_printf(NULL, NULL, 0xa0, 0x46, 0x280, 0x96, "<<%s",	"CALIBRATING, PLEASE WAIT");
+		txt_font_printf(NULL, NULL, 0xa0, 0x28, 640, 0x96, "<%s", "Rebel Assault PC-CDROM V1.7");
+		txt_font_printf(NULL, NULL, 0xa0, 0x46, 640, 0x96, "<<%s",	"CALIBRATING, PLEASE WAIT");
 		txt_font_printf(NULL, NULL, 0x46, 0x5f,  0x80, 0x96, "<<%s", AG(sys_config_cdusage_string));
 		txt_font_printf(NULL, NULL, 0x46, 0x73,  0x80, 0x96, "<<%s", AG(sou_soudrv_namestr));
 		txt_font_printf(NULL, NULL, 0x46, 0x7d,  0x80, 0x96, "<<%s", AG(sou_soudrv_cfgstr1));
@@ -1281,8 +1650,8 @@ int16_t game_level0_func(void)
 	game_screen_hiscore();
 	game_player_score = 0;
 
-	/* 1. Secret Joystick Calibration Check (Down, Up, Left, Right) */
 	do {
+		/* up-down-left-right  unlocks something */
 		if ((game_input_curr_button1 != 0) && (game_input_prev_button1 == 0) && (game_state <= 3)) {
 			if (game_state == 0) {
 				if (game_input_curr_y < -50)
@@ -1307,7 +1676,7 @@ int16_t game_level0_func(void)
 
 		if (game_state == 4) {
 			sou_engine_sethook(5, 1);
-			DAT_002b573e = 1;
+			game_joy_secret_unlock = 1;
 			game_state = 5;
 		}
 		game_switch_task();
@@ -1408,12 +1777,12 @@ int16_t game_level0_func(void)
 	game_state = 1;
 
 	while ((game_state != 0) && (game_exit_loop_now_flag == 0)) {
-		txt_font_print(NULL, NULL, 0xa0, 0x1e, 0x280, 0x64, "MAIN MENU");
-		txt_font_print(NULL, NULL, 0xa0, 0x3c, 0x280, 0x64, "<START NEW GAME");
-		txt_font_print(NULL, NULL, 0xa0, 0x4b, 0x280, 0x64, "<GAME OPTIONS");
-		txt_font_print(NULL, NULL, 0xa0, 0x5a, 0x280, 0x64, "<ENTER PASSCODE");
-		txt_font_print(NULL, NULL, 0xa0, 0x69, 0x280, 0x64, "<CONTINUE DEMO");
-		txt_font_print(NULL, NULL, 0xa0, 0x78, 0x280, 0x64, "<EXIT TO DOS");
+		txt_font_print(NULL, NULL, 0xa0, 0x1e, 640, 0x64, "MAIN MENU");
+		txt_font_print(NULL, NULL, 0xa0, 0x3c, 640, 0x64, "<START NEW GAME");
+		txt_font_print(NULL, NULL, 0xa0, 0x4b, 640, 0x64, "<GAME OPTIONS");
+		txt_font_print(NULL, NULL, 0xa0, 0x5a, 640, 0x64, "<ENTER PASSCODE");
+		txt_font_print(NULL, NULL, 0xa0, 0x69, 640, 0x64, "<CONTINUE DEMO");
+		txt_font_print(NULL, NULL, 0xa0, 0x78, 640, 0x64, "<EXIT TO DOS");
 
 		/* Loop the background animation cleanly */
 		if (game_postcb_currfrme == game_postcb_maxfrme - 51) {

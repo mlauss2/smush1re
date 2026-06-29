@@ -30,7 +30,7 @@ void ctl_init(void)
 
 void ctl_terminate(void)
 {
-
+	ctl_terminate_platform();
 }
 
 void ctl_joy_center(void)
@@ -49,17 +49,6 @@ void ctl_joy_center(void)
 }
 
 void ctl_joy_read(void)
-{
-	/* TODO */
-}
-
-
-void ctl_kbd_query(uint16_t *key_out)
-{
-	/* TODO */
-}
-
-void ctl_mou_center(void)
 {
 	/* TODO */
 }
@@ -107,6 +96,11 @@ void ctl_joy_calibrate_end(void)
 
 void ctl_pointer_query(int16_t *xpos_out, int16_t *ypos_out, int16_t *button1_out, int16_t *button2_out)
 {
+	*xpos_out = 320/2;
+	*ypos_out = 200/2;
+	*button1_out = 0;
+	*button2_out = 0;
+	return;
 	if (AG(ctl_input_updates_locked) != 0) {
 		return;
 	}

@@ -51,9 +51,11 @@ void game_cfg_write_rebltune_txt(void);
 void game_write_hiscore_file(void);
 void game_read_hiscore_file(void);
 
+void game_clear_jmp2(void);								/* 0029249d */
+int16_t game_yield(void);								/* 002924a5 */
 void game_switch_task(void);								/* 00292500 */
 void game_reset_lvldata(uint16_t diffidx);						/* 002925fa */
-int16_t game_enter_passcode_screen(void);						/* 00292687 */
+uint16_t game_enter_passcode_screen(void);						/* 00292687 */
 void game_pause(void);									/* 00292a46 */
 void game_options_joystick_screen(void);						/* 00292acc */
 void game_options_config_screen(uint8_t clrscr, uint8_t diffchg_en);			/* 00292e4c */
@@ -75,6 +77,12 @@ void game_anm_game_cb(uint8_t *dst, uint8_t *statusbar, struct anm_rect *viewpor
 		      uint32_t gam5, uint32_t gam6, uint32_t gam7);			/* 00293bd0 */
 
 
+int16_t game_get_angle(int16_t x1, int16_t y1, int16_t x2, int16_t y2);			/* 00294551 */
+
+int16_t game_get_angle_and_anm_flip_flags(int16_t x1, int16_t y1, int16_t x2,
+					  int16_t y2, uint16_t *af_X, uint16_t *af_Y);	/* 00294616 */
+
+
 int16_t game_anm_loop_cb(void);								/* 002970ce */
 int16_t game_anm_frme_render_postcb (uint8_t *dst, uint8_t *statusbar,
 				     uint16_t currfrme, struct anm_rect *viewport,
@@ -89,6 +97,10 @@ void game_cfg_set_perf_params(uint16_t maxfps, uint16_t timerrate, uint16_t cddr
 
 void game_screen_hiscore(void);				/* 002a354f */
 void game_set_next_level(game_level_fn_t func);		/* 002a396a */
+void game_level_end_print_summary(uint16_t frmestart, uint16_t frmeend, char *bonus1text,
+				  char *bonus1text2, uint16_t bonus1val2, uint16_t bonus1_score,
+				  char *bonus2_text, char *bonus2text2, uint16_t bonus2val2,
+				  uint16_t bonus2_score, uint16_t game_level_index_new);	/* 002a3bba */
 int16_t game_scene_calib_and_init(void);		/* 002a3e77 */
 int16_t game_level0_func(void);				/* 002a4062, intro screen */
 int16_t game_level1_func(void);				/* 002a48b2 */

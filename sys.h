@@ -13,6 +13,7 @@
 void sys_timer_continue(void);
 void sys_timer_init(int cfg_timerrate);			/* synthetic */
 void sys_timer_terminate(void);				/* synthetic */
+void sys_delay(int ms);					/* synthetic */
 
 void sys_timer_handler_generic(void);			/* 0029c84d */
 void sys_timer_animator_handler(void);			/* 0029c95e */

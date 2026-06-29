@@ -114,7 +114,6 @@ int16_t txt_font_print_len(uint8_t *dst, struct anm_rect *viewport, int16_t xoff
 				anm_resource_render(dst, (struct anm_res *)fs,
 						    t3 - 0x21, xoff, yoff, viewport, anm_flags);
 			}
-			textlen--;
 			text++;
 			maxprintlen--;
 			if (!maxprintlen)

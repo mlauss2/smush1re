@@ -62,7 +62,7 @@ struct _anm_globals_v1 {
 	uint32_t		fle_sizes[10];			/* 002b2364 */
 
 	int16_t			fle_cksum_2b238c;		/* 002b238c */
-	uint8_t			fle_002b238e;			/* 002b238e */
+	uint8_t			fle_buffer_ready;			/* 002b238e */
 	uint16_t		game_cfg_timerrate;		/* 002b2390 */
 	uint16_t		game_cfg_maxfps;		/* 002b2392 */
 	uint16_t		game_cfg_maxfps_1315;		/* 002b2394 */
@@ -160,7 +160,7 @@ struct _anm_globals_v1 {
 	int16_t			ctl_input_mouse_xpos;		/* 002b7786 */
 	int16_t			ctl_input_mouse_ypos;		/* 002b7788 */
 	/* pad 2 bytes */
-	void *			fle_buffer;			/* 002b778c */
+	uintptr_t		fle_buffer;			/* 002b778c */
 	uintptr_t		fle_buffer_2kaligned_end;	/* 002b7790 */
 	uint32_t		fle_bufsize_2kaligned;		/* 002b7794 */
 	uint16_t		fle_streamer_dispense_inhibit;	/* 002b7798 */

@@ -405,4 +405,57 @@ void ctl_joy_platupdate_axes(uint16_t *a0, uint16_t *a1, uint16_t *a2, uint16_t 
 	*a7 = ctl_joy_translated_axis_values[7];
 }
 
+
+void ctl_mou_center(void)
+{
+	/* TODO */
+}
+
+void ctl_kbd_query(uint16_t *key_out)
+{
+	uint16_t ch, ch2;
+	int i;
+
+	i = kbhit();
+	if (i != 0) {
+		ch = getch();
+		*key_out = ch;
+		if (ch == 0) {
+			i = kbhit();
+			if (i != 0) {
+				ch = getch();
+				if (ch < 0x4b) {
+					if (ch == 0x48) {
+						*key_out = 0x81;
+					}
+				} else if (ch < 0x4c) {
+					*key_out = 0x83;
+				} else if (0x4c < ch) {
+					if (ch < 0x4e) {
+						*key_out = 0x84;
+					} else if (ch == 0x50) {
+						*key_out = 0x82;
+					}
+				}
+			}
+		}else {
+			if ((ch == 0x3e) || (ch == 0x2e)) {
+				i = 1;
+			} else {
+				if ((ch != 0x3c) && (ch != 0x2c)) {
+					return;
+				}
+				i = -1;
+			}
+			vid_palette_set_brightness(i);
+			*key_out = 0;
+		}
+	}
+	return;
+}
+
+void sys_delay(int ms)
+{
+}
+
 #endif		 /* __WATCOM_C__ */

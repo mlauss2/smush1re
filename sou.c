@@ -21,12 +21,19 @@ int16_t sou_init(void)
 
 	/* 8 bit dest format; sou_init_platform() can override */
 	AG(sou_soudrv_sizeshift) = 0;
+
+	/* set soundcard params, set sizeshift, allocate 4kb(8bit)/8kb(16bit)
+	 * DMA buffers.  DOS needs to do this via a dedicated DPMI call!
+	 */
 	ret = sou_init_platform();
 	if (ret)
 		return ret;
 
 	if (AG(sou_soudrv_pref_bufsize) < 150000)
 		return -2;
+
+	if (AG(sou_dmabuf_arr[0] == NULL) || (AG(sou_dmabuf_arr[1]) == 0))
+		return -3;
 
 	for (int i = 0; i < 255; i++)
 		AG(sou_hooks)[i] = 0;
@@ -111,15 +118,15 @@ void sou_engine_start(uint8_t *data, uint16_t streamid)
 	if (AG(sou_soudrv_type) == 0)
 		return;
 
-	cid = be32_to_cpu(*(uint32_t *)data + 0);
+	cid = __be32(data + 0);
 	if (cid == CREA) {
-		uint16_t s1 = le16_to_cpu(*(uint16_t *)(data + 0x14));
+		uint16_t s1 = __le16(data + 0x14);
 		uint8_t e1 = data[s1 + 1];
 		uint32_t s2 = (e1 << 8) | e1 | (e1 << 16);
 		data = (uint8_t *)(data + s1 + 6);
 		sou_engine_start_stream_raw(data, s2, streamid);
 	} else if (cid == RAW_) {
-		sou_engine_start_stream_raw(data + 8, le16_to_cpu(*(uint16_t *)(data + 4)), streamid);
+		sou_engine_start_stream_raw(data + 8, __le16(data + 4), streamid);
 	} else if (cid != PSAD && cid != PSD2 && cid != PVOC && cid != SAUD) {
 		return;
 	}
@@ -132,12 +139,12 @@ void sou_engine_start(uint8_t *data, uint16_t streamid)
 		tid = 0;
 		idx = 0;
 		maxidx = 1;
-		size = be32_to_cpu(*(uint32_t *)(data + 4)) + 8;
+		size = __be32(data + 4) + 8;
 	} else {
-		size = be32_to_cpu(*(uint32_t *)(data + 4)) - 12;
-		tid = be32_to_cpu(*(uint32_t *)(data + 8));
-		idx = be32_to_cpu(*(uint32_t *)(data + 12));
-		maxidx = be32_to_cpu(*(uint32_t *)(data + 16));
+		size = __be32(data + 4) - 12;
+		tid = __be32(data + 8);
+		idx = __be32(data + 12);
+		maxidx = __be32(data + 16);
 		data += 20;
 	}
 	sou_engine_start_stream(data, size, tid, idx, maxidx, streamid, is_voice);
@@ -230,7 +237,7 @@ void sou_engine_start_stream(uint8_t *data, uint32_t datasize, int32_t tid,
 
 	if (idx == 0) {
 		chidx = 0;
-		if (be32_to_cpu(*(uint32_t *)(data + 4)) < 45000) {
+		if (__be32(data + 4) < 45000) {
 			for (chidx = 3; 0 < chidx; chidx--) {
 				s = &(AG(sou_channel)[chidx]);
 				if (s->buffer && (s->status == 0))
@@ -270,10 +277,10 @@ void sou_engine_start_stream(uint8_t *data, uint32_t datasize, int32_t tid,
 		copysize = (datasize < maxcopysize) ? datasize : 45000;
 		msc_memcpy(s->buffer, data, copysize);
 		s->strkptr = s->buffer + 16;
-		s->sdatptr = s->buffer + 24 + be32_to_cpu(*(uint32_t *)(s->buffer + 12));
+		s->sdatptr = s->buffer + 24 + __be32(s->buffer + 12);
 		s->maxpcmsize = copysize + (uintptr_t)s->buffer - (uintptr_t)s->sdatptr;
 		s->bytesread = datasize;
-		s->sdatsize = be32_to_cpu(*(uint32_t *)(s->sdatptr - 4));
+		s->sdatsize = __be32(s->sdatptr - 4);
 		s->updated = 1;
 		s->is_voice = is_voice;
 		s->status = 2;

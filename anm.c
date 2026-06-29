@@ -14,18 +14,18 @@ int16_t anm_overlay_alloc(void **ppOut)
 void anm_overlay_set(uint8_t *ovlbuf, uint8_t *src, uint8_t *c4tilestore,
 		     struct anm_rect *viewport)
 {
-	uint32_t csz = be32_to_cpu(*(uint32_t *)(src + 4));
+	uint32_t csz = __be32(src + 4);
 	if ((csz + 8) < 0xffff) {
 		if (src[8] == 3) {
 			msc_memcpy(ovlbuf, src, 22);
 			fob_decode_render(ovlbuf + 22, src + 22, c4tilestore,
 					  csz - 14, ovlbuf + 8, 0, 0, viewport, 8);
 			ovlbuf[8] = 20;		/* codec20 */
-			if (le16_to_cpu(*(uint16_t *)(ovlbuf + 14)) >= 0x140) {
+			if (__le16(ovlbuf + 14) >= 0x140) {
 				ovlbuf[14] = 0x40;
 				ovlbuf[15] = 0x01;
 			}
-			if (le16_to_cpu(*(uint16_t *)(ovlbuf + 16)) >= 200) {
+			if (__le16(ovlbuf + 16) >= 200) {
 				ovlbuf[16] = 200;
 				ovlbuf[17] = 0;
 			}
@@ -40,7 +40,7 @@ void anm_overlay_show(uint8_t *dst, uint8_t *ovlbuf, uint8_t *c4tilestore,
 		      uint16_t anm_flags)
 {
 	fob_decode_render(dst, ovlbuf + 20, c4tilestore,
-			  be32_to_cpu(*(uint32_t *)(ovlbuf + 4)) - 14, ovlbuf + 8,
+			  __be32(ovlbuf + 4) - 14, ovlbuf + 8,
 			  xoff, yoff, viewport, anm_flags | 0x0800);
 }
 
@@ -71,6 +71,7 @@ int16_t anm_animator_render(int16_t xoff, int16_t yoff, uint16_t anm_flags)
 				break;
 			if (AG(anm_animator_state) != 0)
 				goto L002979ad;
+			AG(anm_anim_frme_dataptr) = fle_streamer_dispense(8);
 			if (AG(anm_anim_frme_dataptr) == (uint8_t *)(-1))
 				return -1;
 			if (AG(anm_anim_frme_dataptr) != NULL) {
@@ -90,8 +91,9 @@ int16_t anm_animator_render(int16_t xoff, int16_t yoff, uint16_t anm_flags)
 			if (AG(anm_anim_frme_dataptr) == (uint8_t *)(-1))
 				return -1;
 			if (AG(anm_anim_frme_dataptr) != NULL) {
-				b = AG(anm_anim_frme_dataptr)[0];
-				AG(anm_anim_frme_size) = __be32ua(AG(anm_anim_frme_dataptr) + 4);
+				anm_anim_reset();
+				b = *(uint8_t *)(AG(anm_anim_frme_dataptr) + AG(anm_anim_frme_size));
+				AG(anm_anim_frme_size) = __be32ua(AG(anm_anim_frme_dataptr) + AG(anm_anim_frme_size) + 4);
 				AG(anm_anim_frme_curr) = 0;
 				AG(anm_animator_state) = b;
 				if (b == 'F') {
@@ -363,8 +365,8 @@ void anm_frame_render(uint8_t *dst, uint8_t *statusbar, uint8_t *ovlbuf,
 				if (csz < 12) {
 					xo = yo = 0;
 				} else {
-					xo = be16_to_cpu(*(uint16_t *)(frmedata + 14));
-					yo = be16_to_cpu(*(uint16_t *)(frmedata + 18));
+					xo = __be16ua(frmedata + 14);
+					yo = __be16ua(frmedata + 18);
 				}
 				anm_overlay_show(dst, ovlbuf, c4tilestore, xoff + xo,
 						 yoff + yo, viewport, anm_flags);
@@ -381,7 +383,7 @@ void anm_frame_render(uint8_t *dst, uint8_t *statusbar, uint8_t *ovlbuf,
 				       __be32ua(frmedata + 32));
 			}
 		} else if (cid == 0x474f5354) {					/* GOST */
-			uint32_t c = be32_to_cpu(*(uint32_t *)(frmedata + 8));
+			uint32_t c = __be32(frmedata + 8);
 			uint16_t af = (fobj_rendered) ? anm_flags : anm_flags & 0xf7ff;
 			int xo, yo;
 			if (c == 28) {
@@ -391,8 +393,8 @@ void anm_frame_render(uint8_t *dst, uint8_t *statusbar, uint8_t *ovlbuf,
 			} else if (c == 30) {
 				af |= 0x6000;
 			}
-			xo = be16_to_cpu(*(uint16_t *)(frmedata + 14));
-			yo = be16_to_cpu(*(uint16_t *)(frmedata + 18));
+			xo = __be16(frmedata + 14);
+			yo = __be16(frmedata + 18);
 			fob_decode_render(dst, last_fobj + 14, c4tilestore, csz - 14,
 					  last_fobj, xoff + xo, yoff + yo, viewport, af);
 		} else if (cid == 0x4e50414c) {					/* NPAL */
@@ -422,12 +424,12 @@ void anm_frame_render(uint8_t *dst, uint8_t *statusbar, uint8_t *ovlbuf,
 					++t;
 				}
 			}
-			xo = be16_to_cpu(*(uint16_t *)(frmedata + 10));
-			yo = be16_to_cpu(*(uint16_t *)(frmedata + 14));
+			xo = __be16(frmedata + 10);
+			yo = __be16(frmedata + 14);
 			txt_font_print_len(dst, viewport, xo, yo, 0x200, 500,
 					   (csz - 8) - (frmedata[16] == '.') ? 1 : 0, t);
 		} else if (cid ==  0x5850414c) {				/* XPAL */
-			uint32_t cmd = be32_to_cpu(*(uint16_t *)(frmedata + 8));
+			uint32_t cmd = __be32(frmedata + 8);
 			if ((cmd == 0) || (cmd == 2)) {
 				if (cmd == 2) {
 					msc_memcpy(AG(anm_anim_header_current).animpal,
@@ -435,7 +437,7 @@ void anm_frame_render(uint8_t *dst, uint8_t *statusbar, uint8_t *ovlbuf,
 				}
 				for (int i = 0; i < 768; i++) {
 					AG(anm_shift_pal)[i] = AG(anm_anim_header_current).animpal[i] << 7;
-					AG(anm_delta_pal)[i] = le16_to_cpu(*(uint16_t *)(frmedata + 8 + i*2));
+					AG(anm_delta_pal)[i] = __le16(frmedata + 8 + i*2);
 				}
 			} else if (AG(anm_pause_status) != 1) {
 				for (int i = 0; i < 768; i++) {
@@ -615,7 +617,7 @@ int16_t anm_resource_render(uint8_t *dst, struct anm_res *anmres, int16_t residx
 		return 1;
 
 	dp = anmres->membase + anmres->ofsarr[residx];
-	fs = (be32_to_cpu(*(uint32_t *)(dp + 12)) & 0x00ffffff) - 14;
+	fs = (__be32ua(dp + 12) & 0x00ffffff) - 14;
 	fob_decode_render(dst, dp + 0x1e, NULL, fs, dp + 4, xoff, yoff, viewport, anm_flags);
 	return 0;
 }
@@ -627,13 +629,13 @@ uint16_t anm_find_flobject_blocks(uint8_t* data, ptrdiff_t *ofs, uint16_t maxcnt
 	uint16_t v3;
 
 	v3 = 0;
-	v2 = be32_to_cpu(*(uint32_t *)(data + 4));
+	v2 = __be32(data + 4);
 	s = data + 8;
 	while ((0 < v2) && (v3 < maxcnt)) {
-		v1 = be32_to_cpu(*(uint32_t *)(s + 4));
+		v1 = __be32ua(s + 4);
 		if (v1 < 0)
 			return v3;
-		if (be32_to_cpu(*(uint32_t *)(s + 0)) == 0x46524d45) {	/* FRME */
+		if (__be32ua(s + 0) == 0x46524d45) {	/* FRME */
 			ofs[v3] = (ptrdiff_t)(s - data);
 			v3++;
 		}

@@ -19,8 +19,25 @@ SDL_Surface *ssurf = NULL;
 SDL_Texture *stex = NULL;
 SDL_AudioStream *saudio = NULL;
 SDL_Palette *spal = NULL;
+SDL_TimerID stimer = 0;
+
+uint64_t sdl_timer_cntr;
 
 int ra1_plat_win_scale = 4;	/* i want 1280x800 window at least */
+int ra1_latest_key = 0;
+
+#define APPNAME "SMUSHv1 RE"
+
+
+static void vid_present()
+{
+	SDL_UpdateTexture(stex, NULL, ssurf->pixels, ssurf->pitch);
+	SDL_SetSurfacePalette(ssurf, spal);
+	SDL_SetTexturePalette(stex, spal);
+	SDL_RenderClear(sren);
+	SDL_RenderTexture(sren, stex, NULL, NULL);
+	SDL_RenderPresent(sren);
+}
 
 
 void vid_video_init(void)
@@ -28,10 +45,11 @@ void vid_video_init(void)
 	int width = 320 * ra1_plat_win_scale;
 	int height = 200 * ra1_plat_win_scale;
 
+	SDL_SetHint(SDL_HINT_APP_NAME, APPNAME);
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_EVENTS))
 		return;
 
-	swin = SDL_CreateWindow("SMUSHv1 RE", width, height, 0);
+	swin = SDL_CreateWindow(APPNAME, width, height, 0);
 	if (!swin)
 		goto out;
 
@@ -42,16 +60,17 @@ void vid_video_init(void)
 	ssurf = SDL_CreateSurface(320, 200, SDL_PIXELFORMAT_INDEX8);
 	if (!ssurf)
 		goto out;
-
+	spal = SDL_CreatePalette(256);
+	if (!spal)
+		goto out;
 	stex = SDL_CreateTexture(sren, SDL_PIXELFORMAT_INDEX8, SDL_TEXTUREACCESS_STREAMING, 320, 200);
 	if (!stex)
 		goto out;
 
-	spal = SDL_CreatePalette(256);
-	if (!spal)
-		goto out;
+	AG(vid_vga_pal_is_fast) = 1;
 
 	vid_palette_set_brightness(0);
+	vid_present();
 	return;
 out:
 	vid_video_terminate();
@@ -80,14 +99,6 @@ void vid_video_terminate(void)
 		swin = NULL;
 	}
 	SDL_Quit();
-}
-
-static void vid_present()
-{
-	SDL_UpdateTexture(stex, NULL, ssurf->pixels, ssurf->pitch);
-	SDL_RenderClear(sren);
-	SDL_RenderTexture(sren, stex, NULL, NULL);
-	SDL_RenderPresent(sren);
 }
 
 void vid_palette_set_raw(uint8_t *pal)
@@ -196,17 +207,17 @@ void vid_hw_blt_to_statusbar(uint8_t *srcbuf, uint32_t val)
 int16_t sou_sdl3_cb1(void *dmabuf, uint32_t dmasize, uint16_t x86io, uint16_t x86dma,
 		  uint16_t x86irq, void *lut1, void *lut2)
 {
-	uint8_t *l1 = (uint8_t *)lut1;
-	uint8_t *l2 = (uint8_t *)lut2;
+	int16_t *l1 = (int16_t *)lut1;
+	int16_t *l2 = (int16_t *)lut2;
 
-	/* 8->8 volume LUTs according to SB1 code */
-	for (int i = 0; i < 17; i++) {
-		for (int j = 0; j < 256; j++) {
-			int v1 = (i * (j - 128)) / 64;
-			*l1++ = v1 + 128;
-			*l2++ = v1;
+	for (int x = 0; x < 17; x++) {
+		for (int y = 0; y < 256; y++) {
+			int z = (y - 128) * x * 4;
+			*l1++ = z;
+			*l2++ = z;
 		}
 	}
+
 	SDL_ClearAudioStream(saudio);
 	SDL_PutAudioStreamData(saudio, dmabuf, dmasize);
 	SDL_ResumeAudioStreamDevice(saudio);
@@ -230,13 +241,21 @@ int8_t sou_sdl3_cb3(void *snddata, uint32_t datasize)
 /* convert to hw format and apply volume (0..127) */
 void sou_sdl3_cb4(void *dst, uint8_t *src, uint16_t srccnt, uint16_t volume)
 {
-
+	volume &= 0x7f;
+	int16_t *dstx = (int16_t *)dst;
+	while (srccnt--) {
+		*dstx++ = AG(sou_soudrv_LUT1)[volume * 0x100 + *src++];
+	}
 }
 
 /* convert to hw format, apply volume (0..127) and accumulate in dst */
 void sou_sdl3_cb5(void *dst, uint8_t *src, uint16_t srccnt, uint16_t volume)
 {
-
+	int16_t *dstx = (int16_t *)dst;
+	volume &= 0x7f;
+	while (srccnt--) {
+		*dstx++ += AG(sou_soudrv_LUT2)[volume * 0x100 + *src++];
+	}
 }
 
 /* fill the buffer with hw-specific silence */
@@ -248,12 +267,29 @@ void sou_sdl3_cb6(void *dst, uint32_t datasize)
 
 void sou_sdl3_cb7(uint16_t volume)
 {
-
+	SDL_SetAudioStreamGain(saudio, volume / 127.0f);
 }
 
 uint16_t sou_sdl3_cb8(void)
 {
-	return 127;
+	return (uint16_t)(SDL_GetAudioStreamGain(saudio) * 127);
+}
+
+uint16_t sou_sdl3_set_callbacks(sou_soudrv_cb1_fn_t *initfn,   sou_soudrv_cb2_fn_t *termfn,
+				sou_soudrv_cb3_fn_t *ackfn,    sou_soudrv_cb4_fn_t *copyfn,
+				sou_soudrv_cb5_fn_t *accumfn,  sou_soudrv_cb6_fn_t *silencefn,
+				sou_soudrv_cb7_fn_t *setvolfn, sou_soudrv_cb8_fn_t *getvolfn)
+
+{
+	*initfn = sou_sdl3_cb1;
+	*termfn = sou_sdl3_cb2;
+	*ackfn = sou_sdl3_cb3;
+	*copyfn = sou_sdl3_cb4;
+	*accumfn = sou_sdl3_cb5;
+	*silencefn = sou_sdl3_cb6;
+	*setvolfn = sou_sdl3_cb7;
+	*getvolfn = sou_sdl3_cb8;
+	return 1;		/* 16 bit destination format */
 }
 
 int16_t sou_init_platform(void)
@@ -261,7 +297,7 @@ int16_t sou_init_platform(void)
 	SDL_AudioSpec spec;
 
 	spec.freq = 11025;
-	spec.format = SDL_AUDIO_U8;
+	spec.format = SDL_AUDIO_S16LE;
 	spec.channels = 1;
 	saudio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
 					   &spec, NULL, NULL);
@@ -270,23 +306,26 @@ int16_t sou_init_platform(void)
 		return 1;
 	}
 
-	AG(sou_soudrv_cb1_init_fn) = sou_sdl3_cb1;
-	AG(sou_soudrv_cb2_deinit_fn) = sou_sdl3_cb2;
-	AG(sou_soudrv_cb3_ackint_fn) = sou_sdl3_cb3;
-	AG(sou_soudrv_cb4_fill_fn) = sou_sdl3_cb4;
-	AG(sou_soudrv_cb5_accum_fn) = sou_sdl3_cb5;
-	AG(sou_soudrv_cb6_silence_fn) = sou_sdl3_cb6;
-	AG(sou_soudrv_cb7_setvol_fn) = sou_sdl3_cb7;
-	AG(sou_soudrv_cb8_getvol_fn) = sou_sdl3_cb8;
+	/* 16bit: 2 4kB buffers for audio doublebuffering */
+	AG(sou_dmabuf_arr[0]) = malloc(4096);
+	AG(sou_dmabuf_arr[1]) = malloc(4096);
+	memset(AG(sou_dmabuf_arr[0]), 127, 4096);
+	memset(AG(sou_dmabuf_arr[1]), 127, 4096);
+
+	AG(sou_soudrv_sizeshift) = sou_sdl3_set_callbacks(&AG(sou_soudrv_cb1_init_fn), &AG(sou_soudrv_cb2_deinit_fn),
+			       &AG(sou_soudrv_cb3_ackint_fn), &AG(sou_soudrv_cb4_fill_fn),
+			       &AG(sou_soudrv_cb5_accum_fn), &AG(sou_soudrv_cb6_silence_fn),
+			       &AG(sou_soudrv_cb7_setvol_fn), &AG(sou_soudrv_cb8_getvol_fn));
 
 	AG(sou_soudrv_type) = 1;		/* any sound card is good */
 	AG(sou_soudrv_pref_bufsize) = 1500000;	/* what SB16 DOS uses */
-	AG(sou_soudrv_sizeshift) = 0;		/* 0=8bit dest, 1=16bit dest */
 	AG(sou_dmabuf_idx) = 0;
-	/* Soundblaster */
 	AG(sou_soudrv_iobase) = 0x220;
 	AG(sou_soudrv_irq) = 5;
 	AG(sou_soudrv_dma) = 1;
+	snprintf(AG(sou_soudrv_namestr), 100, "SDL3: %s\n",
+		 SDL_GetAudioDeviceName(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK));
+
 	return 0;
 }
 
@@ -297,6 +336,14 @@ void sou_terminate_platform(void)
 	if (saudio) {
 		SDL_DestroyAudioStream(saudio);
 		saudio = NULL;
+	}
+	if (AG(sou_dmabuf_arr[0])) {
+		free(AG(sou_dmabuf_arr[0]));
+		AG(sou_dmabuf_arr[0]) = NULL;
+	}
+	if (AG(sou_dmabuf_arr[1])) {
+		free(AG(sou_dmabuf_arr[1]));
+		AG(sou_dmabuf_arr[1]) = NULL;
 	}
 }
 
@@ -316,6 +363,11 @@ int game_init_platform(int argc, char **argv)
 	int i = 1;
 	int32_t sndio, snddma, sndirq, sndid, sndbufsize, cddrvusage;
 	int16_t timerrate, maxfps;
+
+	timerrate = 300;
+	maxfps = 15;
+	cddrvusage = 0;
+	game_cfg_set_perf_params(maxfps, timerrate, cddrvusage);
 
 	while (1) {
 		if (argc <= i)
@@ -371,33 +423,127 @@ int game_init_platform(int argc, char **argv)
 	return 1;
 }
 
-void sys_timer_handler(void)
-{
-	sys_timer_handler_generic();
-}
-
-void sys_timer_init(int cfg_timerrate)
-{
-
-}
-
-void sys_timer_terminate(void)
-{
-
-}
-
 void sys_timer_continue(void)
 {
 	sys_timer_continue_generic();
 }
 
+void sys_delay(int ms)
+{
+	SDL_Delay(ms);
+}
+
+/* Timer "emulation" of single-thread DOS application.  In SDL the timer
+ * runs in a separate thread, which does not work with the assumptions and
+ * setjmp()/longjmp() architecture in the DOS engine.  So we pump an event
+ * at the timer rate and use the "ctl_mou_center()" call which is called in a
+ * loop in game_run() until termination is requested, to call the engines
+ * timer handler. It also runs in the context of the rest of the engine, which
+ * makes things simpler (no stack setup, ...)
+ */
+#define SMUSH_TICK_EVENT 37
+uint32_t SDL_timer_event_pusher(void *ctx, SDL_TimerID self, uint32_t interval)
+{
+	SDL_Event event;
+
+	SDL_zero(event);
+	event.type = SDL_EVENT_USER;
+	event.user.code = SMUSH_TICK_EVENT;
+	SDL_PushEvent(&event);
+
+	return interval;
+}
+
+void sys_timer_init(int cfg_timerrate)
+{
+	int ms = 1000 / cfg_timerrate;
+
+	AG(sys_timer_abort_toggle) = 0;
+	AG(sys_abort_flag) = 0;
+	AG(sys_timer_yielding) = 0;
+	AG(sys_animation_running_flag) = 0;
+	AG(sys_timer_handler_disable_cntr) = 0;
+	AG(sys_timer_idle_cntr) = 0;
+	AG(sys_saved_flag) = 0;
+	SDL_timer_event_pusher(NULL, -1, -1);
+	stimer = SDL_AddTimer(ms, SDL_timer_event_pusher, NULL);
+}
+
+void sys_timer_terminate(void)
+{
+	if (stimer) {
+		SDL_RemoveTimer(stimer);
+		stimer = 0;
+	}
+}
+
+void ctl_kbd_query(uint16_t *key_out)
+{
+	*key_out = ra1_latest_key;
+}
+
+void ctl_mou_center(void)
+{
+	SDL_Event e;
+	while (SDL_PollEvent(&e)) {
+
+		if (e.type == SDL_EVENT_USER && e.user.code == SMUSH_TICK_EVENT) {
+			sys_timer_handler_generic();
+			continue;
+		}
+
+		if (e.type == SDL_EVENT_QUIT) {
+			anm_cmd_quit();
+		} else if (e.type == SDL_EVENT_KEY_DOWN) {
+			SDL_KeyboardEvent *ke = (SDL_KeyboardEvent *)&e;
+			uint16_t mapped_key = 0;
+			switch (ke->scancode) {
+			case SDL_SCANCODE_UP:    mapped_key = 0x81; break;
+			case SDL_SCANCODE_DOWN:  mapped_key = 0x82; break;
+			case SDL_SCANCODE_LEFT:  mapped_key = 0x83; break;
+			case SDL_SCANCODE_RIGHT: mapped_key = 0x84; break;
+			case SDL_SCANCODE_PERIOD:
+				vid_palette_set_brightness(1);
+				ra1_latest_key = 0;
+				break;
+			case SDL_SCANCODE_COMMA:
+				vid_palette_set_brightness(-1);
+				ra1_latest_key = 0;
+				break;
+			default:
+				if (ke->key >= 32 && ke->key <= 126)
+					mapped_key = (uint16_t)ke->key;
+			break;
+			}
+			if (mapped_key != 0)
+				ra1_latest_key = mapped_key;
+		} else if (e.type = SDL_EVENT_MOUSE_MOTION) {
+			SDL_MouseMotionEvent *me = (SDL_MouseMotionEvent *)&e;
+			//SDL_ConvertEventToRenderCoordinates(sren, &e);
+			AG(ctl_mousedrv_xpos) = 1;
+			AG(ctl_mousedrv_ypos) = 1;
+			printf("mouse: %d %d\n", (int)me->x, (int)me->y);
+		}
+	}
+}
+
 void ctl_init_platform(int mou_en, int joy_en)
 {
+	AG(ctl_mousedrv_xpos) = 0;
+	AG(ctl_mousedrv_ypos) = 0;
+	AG(ctl_mousedrv_button1) = 0;
+	AG(ctl_mousedrv_button2) = 0;
+}
 
+void ctl_terminate_platform(void)
+{
 }
 
 void ctl_joy_plat_update_axes(uint16_t *a0, uint16_t *a1, uint16_t *a2, uint16_t *a3,
 			      uint16_t *a4, uint16_t *a5, uint16_t *a6, uint16_t *a7)
 {
-
+	*a0 = 32767;
+	*a1 = 32767;
+	*a2 = 0;
+	*a3 = 0;
 }

@@ -74,13 +74,13 @@ int16_t vid_bitmap_alloc(uint8_t **dstout)
 {
 	int ret;
 
-	anm_globals.vid_vidbuf_curridx = 0;
-	ret = mem_blk_alloc((void **)&(anm_globals.vid_vidbuf_base[0]), 320*200);
+	AG(vid_vidbuf_curridx) = 0;
+	ret = mem_blk_alloc((void **)&(AG(vid_vidbuf_base)[0]), 320*200);
 	if (ret)
 		return -1;
-	ret = mem_blk_alloc((void **)&(anm_globals.vid_vidbuf_base[1]), 320*200);
+	ret = mem_blk_alloc((void **)&(AG(vid_vidbuf_base)[1]), 320*200);
 	if (ret) {
-		mem_blk_free((void **)&(anm_globals.vid_vidbuf_base[0]));
+		mem_blk_free((void **)&(AG(vid_vidbuf_base)[0]));
 		return -1;
 	}
 	msc_memset(AG(vid_vidbuf_base[0]), 0, 320*200);
@@ -91,8 +91,8 @@ int16_t vid_bitmap_alloc(uint8_t **dstout)
 
 void vid_bitmap_free(uint8_t **base)
 {
-	mem_blk_free((void **)&(anm_globals.vid_vidbuf_base[0]));
-	mem_blk_free((void **)&(anm_globals.vid_vidbuf_base[1]));
+	mem_blk_free((void **)&(AG(vid_vidbuf_base)[0]));
+	mem_blk_free((void **)&(AG(vid_vidbuf_base)[1]));
 	*base = NULL;
 }
 

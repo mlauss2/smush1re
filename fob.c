@@ -14,105 +14,102 @@ void fob_codec1_normal_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yo
 			    uint16_t fobw, uint16_t fobh, uint16_t winx1, uint16_t winy1,
 			    uint16_t winx2, uint16_t winy2)
 {
+	if ((yoff + fobh) < 0 || yoff >= 200 || (xoff + fobw) < 0 || xoff >= 320)
+		return;
+
 	int16_t skip_top = winy1 - yoff;
 	if (skip_top > 0) {
-		yoff += skip_top;
-		fobh -= skip_top;
-		if (fobh <= 0)
-			return;
-		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		// Skip data in src for rows that are above the viewport
+		for (int16_t i = 0; i < skip_top && i < fobh; i++) {
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
+		yoff += skip_top;
+		fobh -= skip_top;
 	}
 
 	int16_t skip_bottom = (yoff + fobh) - winy2;
 	if (skip_bottom > 0) {
 		fobh -= skip_bottom;
-		if (fobh <= 0)
-			return;
 	}
 
 	int16_t skip_left = winx1 - xoff;
 	if (skip_left > 0) {
 		xoff += skip_left;
 		fobw -= skip_left;
-		if (fobw <= 0)
-			return;
-	} else {
-		skip_left = 0;
 	}
 
 	int16_t skip_right = (xoff + fobw) - winx2;
 	if (skip_right > 0) {
 		fobw -= skip_right;
-		if (fobw <= 0)
-			return;
 	}
 
-	uint8_t *dst_ptr = dst + (yoff * 320) + xoff;
+	if (fobh <= 0 || fobw <= 0 || yoff >= 200 || xoff >= 320)
+		return;
+
 	for (uint16_t y = 0; y < fobh; y++) {
+		int16_t current_y = yoff + y;
+		if (current_y < 0 || current_y >= 200)
+			continue;
+
 		if (AG(sys_abort_flag) != 0) {
 			sys_timer_continue();
 		}
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
-		uint8_t *line_dst = dst_ptr;
-		int16_t remaining_left_clip = skip_left;
+		uint8_t *line_dst = dst + (current_y * 320) + xoff;
 		int16_t remaining_width = fobw;
+		int16_t x_cursor = xoff;
+
 		while (remaining_width > 0 && line_src < next_line_src) {
 			uint8_t token = *line_src++;
 			uint16_t count = (token >> 1) + 1;
 			bool is_solid = (token & 1) != 0;
-			uint8_t color = 0;
+
 			if (is_solid) {
-				color = *line_src++;
-			}
-			if (remaining_left_clip > 0) {
-				if (count <= remaining_left_clip) {
-					remaining_left_clip -= count;
-					if (!is_solid) {
-						line_src += count;
-					}
-					continue;
-				} else {
-					uint16_t visible_count = count - remaining_left_clip;
-					if (!is_solid) {
-						line_src += remaining_left_clip;
-					}
-					count = visible_count;
-					remaining_left_clip = 0;
+				uint8_t color = *line_src++;
+				uint16_t draw_count = count;
+				if (x_cursor + draw_count > 320) {
+					draw_count = 320 - x_cursor;
 				}
-			}
-			uint16_t draw_count = count;
-			if (draw_count >= remaining_width) {
-				draw_count = remaining_width;
-			}
-			if (is_solid) {
-				if (color == 0x00) {
-					line_dst += draw_count;
-				} else {
-					memset(line_dst, color, draw_count);
-					line_dst += draw_count;
+				if (draw_count > remaining_width) {
+					draw_count = remaining_width;
 				}
+
+				if (draw_count > 0 && x_cursor >= 0) {
+					if (color != 0x00) {
+						memset(line_dst, color, draw_count);
+					}
+					line_dst += draw_count;
+					x_cursor += draw_count;
+				}
+				remaining_width -= count;
 			} else {
+				uint16_t draw_count = count;
+				if (draw_count > remaining_width) {
+					draw_count = remaining_width;
+				}
+
 				for (uint16_t i = 0; i < draw_count; i++) {
 					uint8_t pixel = *line_src++;
-					if (pixel != 0x00) {
-						*line_dst = pixel;
+					if (x_cursor >= 0 && x_cursor < 320) {
+						if (pixel != 0x00) {
+							*line_dst = pixel;
+						}
+						line_dst++;
+						x_cursor++;
 					}
-					line_dst++;
 				}
 				if (count > draw_count) {
 					line_src += (count - draw_count);
 				}
+				remaining_width -= count;
 			}
-			remaining_width -= draw_count;
 		}
 		src = next_line_src;
-		dst_ptr += 320;
 	}
 }
 
@@ -130,7 +127,7 @@ void fob_codec1_flipx_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -165,7 +162,7 @@ void fob_codec1_flipx_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 		if (AG(sys_abort_flag) != 0) {
 			sys_timer_continue();
 		}
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -244,7 +241,7 @@ void fob_codec1_flipxy_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yo
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_stream_start_y; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -281,7 +278,7 @@ void fob_codec1_flipxy_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yo
 			sys_timer_continue();
 		}
 
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -358,7 +355,7 @@ void fob_codec1_flipy_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_stream_start_y; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -394,7 +391,7 @@ void fob_codec1_flipy_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 		if (AG(sys_abort_flag) != 0) {
 			sys_timer_continue();
 		}
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -466,7 +463,7 @@ void fob_codec3_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -501,7 +498,7 @@ void fob_codec3_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 			sys_timer_continue();
 		}
 
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -563,7 +560,7 @@ void fob_codec23_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -597,7 +594,7 @@ void fob_codec23_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (AG(sys_abort_flag) != 0) {
 			sys_timer_continue();
 		}
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -668,7 +665,7 @@ void fob_codec21_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 			return;
 
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -703,7 +700,7 @@ void fob_codec21_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 			sys_timer_continue();
 		}
 
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -711,7 +708,7 @@ void fob_codec21_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		int16_t remaining_left_clip = skip_left;
 		int16_t remaining_width = fobw;
 		while (remaining_width > 0 && line_src < next_line_src) {
-			uint16_t skip_count = *(uint16_t *)line_src;
+			uint16_t skip_count = __le16ua(line_src);
 			line_src += 2;
 
 			if (remaining_left_clip > 0) {
@@ -736,7 +733,7 @@ void fob_codec21_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 			if (remaining_width <= 0)
 				break;
 
-			uint16_t run_count = (*(uint16_t *)line_src) + 1;
+			uint16_t run_count = __le16ua(line_src) + 1;
 			line_src += 2;
 			if (remaining_left_clip > 0) {
 				if (run_count <= remaining_left_clip) {
@@ -859,7 +856,7 @@ void fob_codec3_flag8_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -895,7 +892,7 @@ void fob_codec3_flag8_work(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yof
 			sys_timer_continue();
 		}
 
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -2312,7 +2309,7 @@ void fob_codec31(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -2346,7 +2343,7 @@ void fob_codec31(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (AG(sys_abort_flag) != 0) {
 			sys_timer_continue();
 		}
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;
@@ -2401,7 +2398,7 @@ void fob_codec32(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 		if (fobh <= 0)
 			return;
 		for (int16_t i = 0; i < skip_top; i++) {
-			uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+			uint16_t payload_len = __le16ua(src);
 			src += 2 + payload_len;
 		}
 	}
@@ -2436,7 +2433,7 @@ void fob_codec32(uint8_t *dst, uint8_t *src, int16_t xoff, int16_t yoff,
 			sys_timer_continue();
 		}
 
-		uint16_t payload_len = le16_to_cpu(*(uint16_t *)src);
+		uint16_t payload_len = __le16ua(src);
 		src += 2;
 		uint8_t *next_line_src = src + payload_len;
 		uint8_t *line_src = src;

@@ -16,6 +16,8 @@ int main(int argc, char **argv)
 {
 	int ret, debug;
 
+	memset(&anm_globals, 0, sizeof(struct _anm_globals_v1));
+
 	ret = game_init_platform(argc, argv);
 	if (ret)
 		return ret;
